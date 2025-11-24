@@ -126,7 +126,7 @@ private:
 		init = true;
 		return init;
 	}
-	//todo: fix constuctor
+	//todo: fix constuctorg
 	cv::Mat cropMat(const cv::Mat& fullFrame, const RECT& area) {
 		int x = max(0, area.left);
 		int y = max(0, area.top);
