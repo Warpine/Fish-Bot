@@ -1,34 +1,35 @@
-#include "Vision.h"
+﻿#include "Vision.h"
+#include <iostream>
 
-Vision::Vision(int areaRadius) : areaRadius(areaRadius) {
+Vision::Vision(int& areaRadius) : areaRadius(areaRadius) {
 	if (!init) {
 		initWindow();
 	}
+	
+	cv::cvtColor(templ, templ4chnl, cv::COLOR_BGR2BGRA);
 }
 void Vision::startCapture(std::atomic<bool>& fihingState) {
 
 	if (!areaSelected) {
 		selectAreaWithMouse(fihingState);
 	}
-
+	//auto clockStart = std::chrono::high_resolution_clock::now();
 	while (fihingState.load())
 	{
-		getDesktopMat();
-		getImage();
 		CaptureFih();
-		showImage();
+		/*auto clockEnd = std::chrono::high_resolution_clock::now();
+		std::chrono::seconds duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - clockStart);
+		if (duration > std::chrono::seconds(360))
+			fihingState = false;*/
+		//сначала фикс логики, потом таймер
 	}
-	if (cv::getWindowProperty(winName, cv::WND_PROP_VISIBLE) > 0) {
-		stopCapture();
-	}
+	
+	stopCapture();
+	
 }
 
 void Vision::CaptureFih() 
 {
-	statusMessage = "start fishing";
-
-
-
 
 	switch (status)
 	{
@@ -39,34 +40,49 @@ void Vision::CaptureFih()
 
 		break;
 
-	case STARTED: //���  ������ ���� ����������� ������
+	case STARTED: //тут  должно быть закидывание удочки
+		getDesktopMat();
+		getImage();
+		showImage();
 		statusMessage = "thrown";
-		pressKeyMouseLeft(1500);
+		pressKeyMouseLeft(350);
 		status = LOOKING;
 		break;
 
 	case LOOKING:
 		statusMessage = "looking for bobber";
-		if (boundRect.area() > 400) {
+		getDesktopMat();
+		getImage();
+		showImage();
+		if (boundRect.area() >= inWaterSize) {
 			status = FOUND;
 			break;
 		}
 		break;
 	case FOUND:
 		statusMessage = "found and watching";
-		if (boundRect.area() <= 400)
+		getDesktopMat();
+		getImage();
+		showImage();
+		if (boundRect.area() < inWaterSize)
 		{
 			status = CATCH;
-			pressKeyMouseLeft(10);
+			pressKeyMouseLeft(15);
 			break;
 		}
-
 		break;
 
 	case CATCH:
-		statusMessage = "catch";
+		statusMessage = "catching";
+		getDesktopMat();
+		getImage();
+		showImage();
+		catchProcess();
+		
+		//if (boundRect.empty()) { //тут надо подумать над состоянием
+		//	status = FINISHED;
+		//}
 
-		status = PULL;
 		break;
 
 	case PULL:
@@ -83,7 +99,7 @@ void Vision::CaptureFih()
 
 	case FINISHED:
 		statusMessage = "Fihing end";
-		//state.fihing = false;
+
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		status = STARTED;
 		break;
@@ -97,25 +113,69 @@ void Vision::CaptureFih()
 
 }
 
+void Vision::catchProcess() { //возможно надо сделать ещё один поток
+	
+	static INPUT input = { 0 };
+	if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize)
+	{
+		
+		cv::Point center(
+			boundRect.x + boundRect.width / 2,
+			boundRect.y + boundRect.height / 2
+		);
+		
+		input.type = INPUT_MOUSE;
+		if (center.x >= 150 && input.mi.dwFlags != MOUSEEVENTF_LEFTUP)
+		{
+			input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+
+			SendInput(1, &input, sizeof(input));
+		}
+		if (center.x <= 48 && input.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)
+		{
+			input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+
+			SendInput(1, &input, sizeof(input));
+		}
+	}
+	else {
+		if (boundRect.empty()) {
+			status = STOPPED;
+			statusMessage = "boundRect empty restart";
+			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+			return;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		if (input.mi.dwFlags != MOUSEEVENTF_LEFTUP)
+		{
+			input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+
+			SendInput(1, &input, sizeof(input));
+		}
+
+		return;
+	}
+}
+
 void Vision::stopCapture()
 {
+	if (cv::getWindowProperty(winName, cv::WND_PROP_VISIBLE) > 0) {
+		cv::destroyWindow(winName);
+	}
 	status = STOPPED;
 	statusMessage = "Not watching";
-	cv::destroyWindow(winName);
 	areaSelected = false;
+	cropRect = cv::Rect();
+	scaleRect = cv::Rect();
 }
 
 void Vision::pressKeyMouseLeft(int KeyUpMillisec) {
-	//SHORT key;
-	//UINT mappedKey;
 
 	INPUT input = { 0 };
-	//key = VkKeyScan('i');
 
-	//mappedKey = MapVirtualKey(LOBYTE(key), 0);
 	input.type = INPUT_MOUSE;
 	input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-	//input.ki.wScan = mappedKey;
+	
 	SendInput(1, &input, sizeof(input));
 	std::this_thread::sleep_for(std::chrono::milliseconds(KeyUpMillisec));
 	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
@@ -168,7 +228,7 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 
 	POINT cursorPos;
 
-	// ������� ������� Num5 
+	// ожидаем нажатие Num5 
 	while (fihingState.load()) {
 
 		if (GetAsyncKeyState(binds::fihKey) & 0x8000) {
@@ -181,7 +241,7 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 			GetCursorPos(&cursorPos);
 			ScreenToClient(windowDesk, &cursorPos);
 
-			// ��������� ������� ������ �������
+			
 			selectedArea.left = cursorPos.x - areaRadius / 2;
 			selectedArea.top = cursorPos.y - areaRadius / 2;
 			selectedArea.right = cursorPos.x + areaRadius / 2;
@@ -194,35 +254,56 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 }
 
 cv::Mat Vision::cropMat() {
-	int x = max(0, selectedArea.left);
-	int y = max(0, selectedArea.top);
-	int width = min(fullScale.cols - x, selectedArea.right - selectedArea.left);
-	int height = min(fullScale.rows - y, selectedArea.bottom - selectedArea.top);
+	if (!cropRect.empty())
+	{
+		return fullScale(cropRect).clone();
+	}
+	else {
+		int x = max(0, selectedArea.left);
+		int y = max(0, selectedArea.top);
+		int width = min(fullScale.cols - x, selectedArea.right - selectedArea.left);
+		int height = min(fullScale.rows - y, selectedArea.bottom - selectedArea.top);
 
-	if (width <= 0 || height <= 0) {
-		return cv::Mat();
+		if (width <= 0 || height <= 0) {
+			return cv::Mat();
+		}
+
+		cropRect = cv::Rect(x, y, width, height);
+		return fullScale(cropRect).clone();
 	}
 
-	return fullScale(cv::Rect(x, y, width, height)).clone();
+
 }
 
 void Vision::getMaskColorBased(cv::Mat& imgMask) {
 
 	cv::Scalar Lower(objHSV[BOBBER][HMIN],
-		objHSV[BOBBER][SMIN],
-		objHSV[BOBBER][VMIN]);
+		             objHSV[BOBBER][SMIN],
+		             objHSV[BOBBER][VMIN]);
 
 	cv::Scalar Upper(objHSV[BOBBER][HMAX],
-		objHSV[BOBBER][SMAX],
-		objHSV[BOBBER][VMAX]);
+		             objHSV[BOBBER][SMAX],
+		             objHSV[BOBBER][VMAX]);
 
 	inRange(imgHSV, Lower, Upper, imgMask);
 }
 
 void Vision::getImage() {
-	img = cropMat();
+	if (status != CATCH) {
+		img = cropMat();
+	}
+	else {
+		img = matchingMethod();
+	}
+	
+	if (img.empty()) {
+		statusMessage = "img empty restarting...";
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		status = STOPPED;
+		return;
+	}
 
-	cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
+	cvtColor(img, imgHSV, cv::COLOR_BGR2HSV); //exception
 
 	getMaskColorBased(imgMask);
 
@@ -235,17 +316,114 @@ void Vision::getImage() {
 	for (size_t i = 0; i < contours.size(); ++i) {
 		boundRect = cv::boundingRect(contours[i]);
 
-		if (boundRect.area() > 400)
-		{                                                                //&& (state.boundRect.width < 70 || state.boundRect.height < 70)
-			cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255), 3);
+		if (status != CATCH)
+		{
+			if (boundRect.area() > inWaterSize)
+			{           
+				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255), 3);
+			}
+			else
+			{
+				boundRect = cv::Rect();
+			}
 		}
+		else
+		{
+			if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize){
+				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255), 3);
+			}
+			else {
+				boundRect = cv::Rect();
+			}
+		}
+	
 
 	}
 }
 
 void Vision::showImage()
 {
-	cv::namedWindow(winName);
-	cv::imshow(winName, img);
-	cv::waitKey(5);
+	if (!img.empty()) {
+		cv::namedWindow(winName);
+		cv::imshow(winName, img);
+		cv::waitKey(5);
+	}
+}
+
+cv::Mat Vision::matchingMethod()
+{
+	if(!scaleRect.empty())
+	{ 
+		return fullScale(scaleRect).clone();
+	
+	}
+
+	else {
+		int match_method = cv::TM_SQDIFF_NORMED;
+
+		if (templ4chnl.empty()) {
+			statusMessage = "Template Not Found";
+			scaleRect = cv::Rect();
+			std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+			return cv::Mat();
+		}
+
+		
+
+		cv::Mat result;
+		int result_cols = fullScale.cols - templ4chnl.cols + 1;
+		int result_rows = fullScale.rows - templ4chnl.rows + 1;
+
+		result.create(result_rows, result_cols, CV_32FC1);
+
+		
+		try {
+			cv::matchTemplate(fullScale, templ4chnl, result, match_method); 
+		}
+		catch (const cv::Exception& e) {
+			if (fullScale.type() != templ4chnl.type())
+			{
+				statusMessage = "types of image not matching";
+			}
+			else {
+				statusMessage = "idk exeption lol";
+			}
+			scaleRect = cv::Rect();
+			std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+			return cv::Mat();
+		}
+			cv::normalize(result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
+			double thresholdValue = 3.0 / 255.0;
+			double minVal, maxVal; 
+			cv::Point minLoc, maxLoc, matchLoc;
+
+			
+			threshold(result, result, thresholdValue, 1.0, cv::THRESH_BINARY);
+
+			minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat());
+
+			
+			
+
+			if (match_method == cv::TM_SQDIFF || match_method == cv::TM_SQDIFF_NORMED) {
+				matchLoc = minLoc;
+			}
+			else {
+				statusMessage = "cringe";
+				return cv::Mat();
+			}
+			
+			scaleRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
+
+			return fullScale(scaleRect).clone();
+			//работает по такому же принципу как кроп мат
+			//вроде нужен только скейл рект в общем пространстве
+			//scaleMat = fullScale(scaleRect).clone();
+
+
+
+		
+		
+	}
+	
 }

@@ -30,7 +30,7 @@ void CleanupRenderTarget();
 void ShowMainWindow(AppState& state, ImGuiIO& io);
 //void CaptureFih(AppState& state, Status& status);
 void debugWindow(std::string statusMessage);
-void pressKeyMouseLeft(int KeyUpMillisec);
+//void pressKeyMouseLeft(int KeyUpMillisec);
 ImGuiStyle SetupImGuiStyle();
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -42,6 +42,8 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
 	//statements, windows, etc
+	
+	
 	AppState state;
 	Vision vizu(state.areaRadius);
 	//Status status = STOPPED;
@@ -148,10 +150,9 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 				fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing));
 			}
 
-
-			/*if (GetAsyncKeyState(state.stopFih) & 0x8000) {
+			if (GetAsyncKeyState(binds::stopFih) & 0x8000) {
 				state.fihing = false;
-			}*/
+			}
 		}
 		else {
 			
@@ -276,7 +277,7 @@ void ShowMainWindow(AppState& state, ImGuiIO& io)
 		ImGui::EndTable();
 	}
 	//ImGui::Checkbox("another window", &state.showAnotherWindow);
-	//ImGui::SliderFloat("float", &state.f, 0.0f, 1.0f);
+	ImGui::SliderInt("areaRadius", &state.areaRadius, 200.0f, 500.0f);
 	//ImGui::ColorEdit3("clear color", (float*)&state.clear_color);
 	if (ImGui::Button("Start"))
 	{

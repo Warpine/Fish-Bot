@@ -32,15 +32,21 @@ private:
 	};
 
 
-	int areaRadius; //передаётся в конструктор
+	int& areaRadius; //передаётся в конструктор
 
 	//если буду использовать несколько объектов класса надо будет пересмотреть
+	//а пока ебашу статики вместо передачи в функции по ссылке
 	static inline HWND windowDesk = nullptr;
 	static inline cv::Mat img = cv::Mat();
 	static inline cv::Mat fullScale = cv::Mat();
 	static inline bool init = false;
 	static inline bool areaSelected = false;
 	static inline Status status = STOPPED;
+	static inline cv::Point bestMatch = cv::Point(0);
+
+	//вот эти два сбрасываются при выходе из цикла
+	static inline cv::Rect cropRect = cv::Rect();
+	static inline cv::Rect scaleRect = cv::Rect(); 
 
 	cv::Mat	imgHSV, imgMask;
 	std::vector<std::vector<cv::Point>> contours;
@@ -56,6 +62,11 @@ private:
 
 	const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 	const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+	const int inWaterSize = 400;
+	const int inScaleSize = 20;
+	const double threshold_value = 0.8;
+	const cv::Mat templ = cv::imread("E:/IT/repos/imguiTest/src/scale.png", cv::IMREAD_COLOR);
+	cv::Mat templ4chnl;
 
 	//mouse related
 	void CaptureFih();
@@ -70,11 +81,14 @@ private:
 	void getMaskColorBased(cv::Mat& imgMask);
 	void getImage();
 	void showImage();
+	cv::Mat matchingMethod();
+	void catchProcess();
 
 public:
 	static inline std::string statusMessage = "never started";
+	std::atomic<time_t> timeNow;
 	const std::string winName = "Debug Window";
 	void startCapture(std::atomic<bool>& fihingState);
-	Vision(int areaRadius);
+	Vision(int& areaRadius);
 };
 

@@ -1,12 +1,15 @@
 #pragma once
 #include <imgui/imgui_impl_win32.h>
 #include <WinUser.h>
-
+#include<chrono>
 namespace binds 
 {
 	inline int fihKey = VK_NUMPAD5;
 	inline int stopFih = VK_ESCAPE;
+	//inline int inventory = VK_I
 }
+
+
 
 struct AppState {
 public:
@@ -17,8 +20,6 @@ public:
 	int areaRadius = 200;
 	int mainWinSize = (int)(500 * mainScale);
 	int hostWinSize = (int)(1 * mainScale);
-
-
 	
 
 	//bool
@@ -29,14 +30,16 @@ public:
 	bool exit = false;
 	std::atomic<bool> fihing = false;
 	bool debug = false;
-
+	//auto start = std::chrono::high_resolution_clock::now();
 	//window flags
 	ImGuiWindowFlags flazhoks = 
 		ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoCollapse;
 
 	ImVec4 clear_color = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
-	
+	AppState() {
+		
+	}
 
 };
 
