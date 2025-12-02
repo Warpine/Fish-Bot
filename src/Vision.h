@@ -31,22 +31,27 @@ private:
 		FINISHED
 	};
 
+	HDC deviceContext = nullptr;
+	HDC memoryDeviceContext = nullptr;
+	HBITMAP bitmap = nullptr;
+	BITMAPINFOHEADER bi;
+	bool gdiInitialized = false;
 
 	int& areaRadius; //передаётся в конструктор
 
 	//если буду использовать несколько объектов класса надо будет пересмотреть
 	//а пока ебашу статики вместо передачи в функции по ссылке
-	static inline HWND windowDesk = nullptr;
-	static inline cv::Mat img = cv::Mat();
-	static inline cv::Mat fullScale = cv::Mat();
-	static inline bool init = false;
-	static inline bool areaSelected = false;
-	static inline Status status = STOPPED;
-	static inline cv::Point bestMatch = cv::Point(0);
+	HWND windowDesk = nullptr;
+	cv::Mat img = cv::Mat();
+	cv::Mat fullScale = cv::Mat();
+	bool init = false;
+	bool areaSelected = false;
+	Status status = STOPPED;
+	cv::Point bestMatch = cv::Point(0);
 
 	//вот эти два сбрасываются при выходе из цикла
-	static inline cv::Rect cropRect = cv::Rect();
-	static inline cv::Rect scaleRect = cv::Rect(); 
+	cv::Rect cropRect = cv::Rect();
+	cv::Rect scaleRect = cv::Rect(); 
 
 	cv::Mat	imgHSV, imgMask;
 	std::vector<std::vector<cv::Point>> contours;
@@ -90,5 +95,6 @@ public:
 	const std::string winName = "Debug Window";
 	void startCapture(std::atomic<bool>& fihingState);
 	Vision(int& areaRadius);
+	~Vision();
 };
 

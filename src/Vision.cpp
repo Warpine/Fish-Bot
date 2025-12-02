@@ -8,6 +8,10 @@ Vision::Vision(int& areaRadius) : areaRadius(areaRadius) {
 	
 	cv::cvtColor(templ, templ4chnl, cv::COLOR_BGR2BGRA);
 }
+Vision::~Vision()
+{
+	
+}
 void Vision::startCapture(std::atomic<bool>& fihingState) {
 
 	if (!areaSelected) {
@@ -61,27 +65,27 @@ void Vision::CaptureFih()
 		break;
 	case FOUND:
 		statusMessage = "found and watching";
-		getDesktopMat();
-		getImage();
-		showImage();
-		if (boundRect.area() < inWaterSize)
+		if (boundRect.area() < inWaterSize) //скорее всего не работает
 		{
 			status = CATCH;
 			pressKeyMouseLeft(15);
 			break;
 		}
+		getDesktopMat();
+		getImage();
+		showImage();
+		
 		break;
 
 	case CATCH:
 		statusMessage = "catching";
 		getDesktopMat();
 		getImage();
-		showImage();
 		catchProcess();
+		showImage();
 		
-		//if (boundRect.empty()) { //тут надо подумать над состоянием
-		//	status = FINISHED;
-		//}
+		 //тут надо подумать над состоянием
+		
 
 		break;
 
@@ -162,6 +166,10 @@ void Vision::stopCapture()
 	if (cv::getWindowProperty(winName, cv::WND_PROP_VISIBLE) > 0) {
 		cv::destroyWindow(winName);
 	}
+	if(bitmap) DeleteObject(bitmap);
+	if (memoryDeviceContext) DeleteDC(memoryDeviceContext);
+	if (deviceContext) ReleaseDC(windowDesk, deviceContext);
+	gdiInitialized = false;
 	status = STOPPED;
 	statusMessage = "Not watching";
 	areaSelected = false;
@@ -189,39 +197,33 @@ bool Vision::initWindow() {
 }
 
 void Vision::getDesktopMat() {
-	HDC deviceContext = GetDC(windowDesk);
-	if (!deviceContext) return;
-	HDC memoryDeviceContext = CreateCompatibleDC(deviceContext);
+	if (!gdiInitialized) {
+		deviceContext = GetDC(windowDesk);
+		if (!deviceContext) return;
+		memoryDeviceContext = CreateCompatibleDC(deviceContext);
 
-	HBITMAP bitmap = CreateCompatibleBitmap(deviceContext, screenWidth, screenHeight);
+		
+		BITMAPINFO bmi = { 0 }; //specify format by using bitmap info header
+		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		bmi.bmiHeader.biWidth = screenWidth;
+		bmi.bmiHeader.biHeight = -screenHeight;
+		bmi.bmiHeader.biPlanes = 1;
+		bmi.bmiHeader.biBitCount = 32;
+		bmi.bmiHeader.biCompression = BI_RGB;
 
-	SelectObject(memoryDeviceContext, bitmap);
+		void* pBits = nullptr;
+		bitmap = CreateDIBSection(memoryDeviceContext, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+		SelectObject(memoryDeviceContext, bitmap);
 
+		//straight use of bitmap data
+		fullScale = cv::Mat(screenHeight, screenWidth, CV_8UC4, pBits);
+		gdiInitialized = true;
+	}
+	
 	//copy data into the bitmap
 	BitBlt(memoryDeviceContext, 0, 0, screenWidth, screenHeight, deviceContext, 0, 0, SRCCOPY);
 
-	//specify format by using bitmap info header
-	BITMAPINFOHEADER bi;
-	bi.biSize = sizeof(BITMAPINFOHEADER);
-	bi.biWidth = screenWidth;
-	bi.biHeight = -screenHeight;
-	bi.biPlanes = 1;
-	bi.biBitCount = 32;
-	bi.biCompression = BI_RGB;
-	bi.biSizeImage = 0; //cause no compression
-	bi.biXPelsPerMeter = 1;
-	bi.biYPelsPerMeter = 2;
-	bi.biClrUsed = 3;
-	bi.biClrImportant = 4;
-
-	fullScale = cv::Mat(screenHeight, screenWidth, CV_8UC4);//rgba = 8bit per value
-
-	//copy and transform data
-	GetDIBits(memoryDeviceContext, bitmap, 0, screenHeight, fullScale.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
-
-	DeleteObject(bitmap);
-	DeleteDC(memoryDeviceContext);
-	ReleaseDC(windowDesk, deviceContext);
+	
 }
 
 void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {

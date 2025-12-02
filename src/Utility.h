@@ -18,9 +18,10 @@ public:
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
 	int counter = 0;
 	int areaRadius = 200;
-	int mainWinSize = (int)(500 * mainScale);
-	int hostWinSize = (int)(1 * mainScale);
-	
+	int mainWinSize = (int)(500);
+	int hostWinSize = (int)(1);
+	const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+	const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
 	//bool
 	bool showDemoWindow = false;
@@ -38,7 +39,7 @@ public:
 
 	ImVec4 clear_color = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
 	AppState() {
-		
+		//mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
 	}
 
 };

@@ -51,10 +51,9 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	//window
 	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"_", nullptr };
 	::RegisterClassExW(&wc);
-	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED, wc.lpszClassName, L"A", WS_POPUP, 100, 100, state.hostWinSize, state.hostWinSize, nullptr, nullptr, wc.hInstance, nullptr);
-	
+	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED, wc.lpszClassName, L"A", WS_POPUP, 0, 0, state.screenWidth, state.screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
 
-
+	SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_COLORKEY);
 	MARGINS margins = { -1 };
 	DwmExtendFrameIntoClientArea(hwnd, &margins);
 
@@ -69,12 +68,13 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	::UpdateWindow(hwnd);
 
 	//setup imgui context
+	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	//io.Fonts->AddFontFromFileTTF("path/to/font.ttf", 16.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 	//style and scaling
 	ImGuiStyle style = SetupImGuiStyle();
@@ -84,7 +84,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	io.ConfigDpiScaleViewports = true;      // [Experimental] Scale Dear ImGui and Platform Windows when Monitor DPI changes.
 
 
-	// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+	 //When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
 		style.WindowRounding = 0.0f;
@@ -162,24 +162,15 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		}
 		
 	
-
-			/*if (state.showAnotherWindow)
-			{
-				ImGui::SetNextWindowSize(ImVec2(state.mainWinSize, state.mainWinSize));
-				ImGui::Begin("another window", &state.showAnotherWindow);
-				ImGui::Text("gavno esh");
-				if (ImGui::Button("please dont"))
-				{
-					state.showAnotherWindow = false;
-				}
-				ImGui::End();
-			}*/
+		
+			
 			//rendering
 			ImGui::Render();
 			const float clear_color_with_alpha[4] = { state.clear_color.x * state.clear_color.w, state.clear_color.y * state.clear_color.w, state.clear_color.z * state.clear_color.w, state.clear_color.w };
 			g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
 			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
 			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+			//SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
 			// Update and Render additional Platform Windows
 			if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -188,12 +179,13 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 				ImGui::RenderPlatformWindowsDefault();
 			}
 
+			
 			//present
 			HRESULT hr = g_pSwapChain->Present(1, 0);
 			g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 		}
 	state.fihing = false;
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 		// Cleanup
 		ImGui_ImplDX11_Shutdown();
@@ -267,6 +259,7 @@ void CleanupRenderTarget()
 void ShowMainWindow(AppState& state, ImGuiIO& io)
 {
 	ImGui::SetNextWindowSize(ImVec2(state.mainWinSize, state.mainWinSize));
+	//ImGui::SetNextWindowPos(ImVec2(state.screenWidth / 2, state.screenHeight / 2));
 	ImGui::Begin("FihBot v0.0.0.0", 0, state.flazhoks);
 
 	if (ImGui::BeginTable("split", 3))
