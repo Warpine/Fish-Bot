@@ -1,7 +1,7 @@
 ﻿#include "Vision.h"
-#include <iostream>
+//#include <iostream>
 
-Vision::Vision(int& areaRadius) : areaRadius(areaRadius) {
+Vision::Vision(int& areaRadius, int& fihkey, int& stopfih) : areaRadius(areaRadius), fihKey(fihkey), stopFih(stopfih) {
 	if (!init) {
 		initWindow();
 	}
@@ -12,7 +12,7 @@ Vision::~Vision()
 {
 	
 }
-void Vision::startCapture(std::atomic<bool>& fihingState) {
+void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit) {
 
 	if (!areaSelected) {
 		selectAreaWithMouse(fihingState);
@@ -20,12 +20,14 @@ void Vision::startCapture(std::atomic<bool>& fihingState) {
 	//auto clockStart = std::chrono::high_resolution_clock::now();
 	while (fihingState.load())
 	{
-		CaptureFih();
-		/*auto clockEnd = std::chrono::high_resolution_clock::now();
-		std::chrono::seconds duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - clockStart);
-		if (duration > std::chrono::seconds(360))
-			fihingState = false;*/
-		//сначала фикс логики, потом таймер
+		if (shouldExit.load()) { break; }
+			CaptureFih();
+			/*auto clockEnd = std::chrono::high_resolution_clock::now();
+			std::chrono::seconds duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - clockStart);
+			if (duration > std::chrono::seconds(360))
+				fihingState = false;*/
+				//сначала фикс логики, потом таймер
+		
 	}
 	
 	stopCapture();
@@ -233,9 +235,9 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 	// ожидаем нажатие Num5 
 	while (fihingState.load()) {
 
-		if (GetAsyncKeyState(binds::fihKey) & 0x8000) {
+		if (GetAsyncKeyState(fihKey) & 0x8000) {
 
-			while (GetAsyncKeyState(binds::fihKey) & 0x8000) {
+			while (GetAsyncKeyState(fihKey) & 0x8000) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 			if (!fihingState.load()) break;

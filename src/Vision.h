@@ -3,7 +3,7 @@
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
 #include <Windows.h>
-#include<atomic>
+//#include<atomic>
 #include"Utility.h"
 
 class Vision
@@ -38,9 +38,9 @@ private:
 	bool gdiInitialized = false;
 
 	int& areaRadius; //передаётся в конструктор
+	int& fihKey;
+	int& stopFih;
 
-	//если буду использовать несколько объектов класса надо будет пересмотреть
-	//а пока ебашу статики вместо передачи в функции по ссылке
 	HWND windowDesk = nullptr;
 	cv::Mat img = cv::Mat();
 	cv::Mat fullScale = cv::Mat();
@@ -93,8 +93,8 @@ public:
 	static inline std::string statusMessage = "never started";
 	std::atomic<time_t> timeNow;
 	const std::string winName = "Debug Window";
-	void startCapture(std::atomic<bool>& fihingState);
-	Vision(int& areaRadius);
+	void startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit);
+	Vision(int& areaRadius, int& fihkey, int& stopfih);
 	~Vision();
 };
 

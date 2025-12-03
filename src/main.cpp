@@ -7,11 +7,13 @@
 #include<dwmapi.h>
 #include<d3d11.h>
 #include <tchar.h>
+#include<thread>
 
 #include<imgui/imgui.h>
 #include<imgui/imgui_impl_dx11.h>
 #include<imgui/imgui_impl_win32.h>
 
+//#include"json/json.hpp"
 //#include"Utility.h"
 #include"Vision.h" //Utility is already included in vision.h
 
@@ -27,7 +29,7 @@ bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
-void ShowMainWindow(AppState& state, ImGuiIO& io);
+void ShowMainWindow(AppState& state, int& areaRadius);
 //void CaptureFih(AppState& state, Status& status);
 void debugWindow(std::string statusMessage);
 //void pressKeyMouseLeft(int KeyUpMillisec);
@@ -36,16 +38,31 @@ ImGuiStyle SetupImGuiStyle();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
  
-
+Config cnf;
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
-
+	
+	try {
+		cnf.loadConfig();
+	}
+	catch (const std::exception& e) {
+		if (cnf.firstLaunch) {
+			cnf.createDefaultCnf();
+		}
+		cnf.loadConfig();
+	}
+		
+			
+	
+	
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
+	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
 	//statements, windows, etc
 	
 	
 	AppState state;
-	Vision vizu(state.areaRadius);
+	//Config cnf;
+	Vision vizu(cnf.areaRadius, cnf.fihKey, cnf.stopFih);
 	//Status status = STOPPED;
 
 	//window
@@ -53,6 +70,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED, wc.lpszClassName, L"A", WS_POPUP, 0, 0, state.screenWidth, state.screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
 
+	//SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_ALPHA);
 	SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_COLORKEY);
 	MARGINS margins = { -1 };
 	DwmExtendFrameIntoClientArea(hwnd, &margins);
@@ -66,20 +84,19 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	}
 	::ShowWindow(hwnd, SW_SHOWDEFAULT);
 	::UpdateWindow(hwnd);
-
 	//setup imgui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	//io.Fonts->AddFontFromFileTTF("path/to/font.ttf", 16.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
+	io.Fonts->AddFontFromFileTTF("E:/IT/repos/imguiTest/external/fonts/Impact.ttf", 16.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 	//style and scaling
 	ImGuiStyle style = SetupImGuiStyle();
-	style.ScaleAllSizes(state.mainScale);
-	style.FontScaleDpi = state.mainScale;
+	style.ScaleAllSizes(mainScale);
+	style.FontScaleDpi = mainScale;
 	io.ConfigDpiScaleFonts = true;          // [Experimental] Automatically overwrite style.FontScaleDpi in Begin() when Monitor DPI changes. This will scale fonts but _NOT_ scale sizes/padding for now.
 	io.ConfigDpiScaleViewports = true;      // [Experimental] Scale Dear ImGui and Platform Windows when Monitor DPI changes.
 
@@ -97,7 +114,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	std::thread fishingThread;
 
 	//main loop
-	while (!state.exit)
+	while (!state.shouldExit.load())
 	{
 		MSG msg;
 		while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
@@ -105,10 +122,10 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);
 			if (msg.message == WM_QUIT)
-				state.exit = true;
+				state.shouldExit = true;
 
 		}
-		if (state.exit)
+		if (state.shouldExit.load())
 			break;
 
 
@@ -136,7 +153,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		
 
 		if (state.showMainWindow)
-			ShowMainWindow(state, io);
+			ShowMainWindow(state, cnf.areaRadius);
 
 		if (state.showDemoWindow)
 			ImGui::ShowDemoWindow(&state.showDemoWindow);
@@ -147,10 +164,10 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		if (state.fihing.load()) {
 
 			if (!fishingThread.joinable()) { 
-				fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing));
+				fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing), std::ref(state.shouldExit));
 			}
 
-			if (GetAsyncKeyState(binds::stopFih) & 0x8000) {
+			if (GetAsyncKeyState(cnf.stopFih) & 0x8000) {
 				state.fihing = false;
 			}
 		}
@@ -166,7 +183,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			
 			//rendering
 			ImGui::Render();
-			const float clear_color_with_alpha[4] = { state.clear_color.x * state.clear_color.w, state.clear_color.y * state.clear_color.w, state.clear_color.z * state.clear_color.w, state.clear_color.w };
+			const float clear_color_with_alpha[4] = { 0, 0, 0, 0 };
 			g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
 			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
 			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -184,6 +201,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			HRESULT hr = g_pSwapChain->Present(1, 0);
 			g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 		}
+	cnf.saveConfig();
 	state.fihing = false;
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -256,10 +274,9 @@ void CleanupRenderTarget()
 	}
 }
 
-void ShowMainWindow(AppState& state, ImGuiIO& io)
+void ShowMainWindow(AppState& state, int& areaRadius /*ImGuiIO& io*/ )
 {
-	ImGui::SetNextWindowSize(ImVec2(state.mainWinSize, state.mainWinSize));
-	//ImGui::SetNextWindowPos(ImVec2(state.screenWidth / 2, state.screenHeight / 2));
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	ImGui::Begin("FihBot v0.0.0.0", 0, state.flazhoks);
 
 	if (ImGui::BeginTable("split", 3))
@@ -269,9 +286,23 @@ void ShowMainWindow(AppState& state, ImGuiIO& io)
 
 		ImGui::EndTable();
 	}
-	//ImGui::Checkbox("another window", &state.showAnotherWindow);
-	ImGui::SliderInt("areaRadius", &state.areaRadius, 200.0f, 500.0f);
-	//ImGui::ColorEdit3("clear color", (float*)&state.clear_color);
+	
+	if (ImGui::Button("config")) {
+		
+		bool confOpen = true;
+		ImGui::Begin("Configuration", &confOpen);
+		ImGui::Text("Start Fishing"); ImGui::SameLine();
+		if (ImGui::Button("Fihkey")) {
+
+		}
+		ImGui::Text("Stop Fishing"); ImGui::SameLine();
+		if (ImGui::Button("Stopfih")) { //реализации пока нет
+
+		}
+		
+	}
+
+	ImGui::SliderInt("areaRadius", &areaRadius, 200.0f, 500.0f);
 	if (ImGui::Button("Start"))
 	{
 		state.fihing.store(true);
@@ -282,7 +313,7 @@ void ShowMainWindow(AppState& state, ImGuiIO& io)
 	}
 
 	if (ImGui::Button("close app"))
-		state.exit = true;
+		state.shouldExit = true;
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
 	ImGui::End();
@@ -307,6 +338,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return true;
 	switch (msg)
 	{
+	
+
 	case WM_SIZE:
 		if (wParam == SIZE_MINIMIZED)
 			return 0;
