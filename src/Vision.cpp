@@ -231,7 +231,7 @@ void Vision::getDesktopMat() {
 void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 
 	POINT cursorPos;
-
+	statusMessage = "waiting for area selection";
 	// ожидаем нажатие Num5 
 	while (fihingState.load()) {
 

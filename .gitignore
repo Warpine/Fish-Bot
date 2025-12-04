@@ -1,11 +1,11 @@
 #blya
 .vs/
-*.vcxproj
-*.vcxproj.filters
-*.vcxproj.user
 *.sln
 *.suo
 *.aps
 *.ncb
 *.opendb
 *.db
+*.pdb
+*.enc
+*.ini

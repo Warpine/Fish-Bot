@@ -13,9 +13,9 @@
 #include<imgui/imgui_impl_dx11.h>
 #include<imgui/imgui_impl_win32.h>
 
-//#include"json/json.hpp"
-//#include"Utility.h"
+
 #include"Vision.h" //Utility is already included in vision.h
+
 
 static ID3D11Device*           g_pd3dDevice = nullptr;
 static ID3D11DeviceContext*    g_pd3dDeviceContext = nullptr;
@@ -29,41 +29,32 @@ bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
-void ShowMainWindow(AppState& state, int& areaRadius);
-//void CaptureFih(AppState& state, Status& status);
-void debugWindow(std::string statusMessage);
-//void pressKeyMouseLeft(int KeyUpMillisec);
+//void ShowMainWindow();
+
+//void debugWindow(std::string statusMessage);
+//void configWindow();
+
 ImGuiStyle SetupImGuiStyle();
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
- 
+
 Config cnf;
+Vision vizu(cnf.areaRadius, cnf.fihKey, cnf.stopFihKey);
+AppState state(cnf, vizu.statusMessage);
+
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	
-	try {
-		cnf.loadConfig();
-	}
-	catch (const std::exception& e) {
-		if (cnf.firstLaunch) {
-			cnf.createDefaultCnf();
-		}
-		cnf.loadConfig();
-	}
+	cnf.loadConfig();
 		
-			
-	
-	
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
 	//statements, windows, etc
 	
 	
-	AppState state;
-	//Config cnf;
-	Vision vizu(cnf.areaRadius, cnf.fihKey, cnf.stopFih);
-	//Status status = STOPPED;
+	
+	
 
 	//window
 	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"_", nullptr };
@@ -111,7 +102,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	ImGui_ImplWin32_Init(hwnd);
 	ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-	std::thread fishingThread;
+	
 
 	//main loop
 	while (!state.shouldExit.load())
@@ -150,10 +141,11 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
 
-		
+		/*if (state.confOpen)
+			configWindow();
 
 		if (state.showMainWindow)
-			ShowMainWindow(state, cnf.areaRadius);
+			ShowMainWindow();
 
 		if (state.showDemoWindow)
 			ImGui::ShowDemoWindow(&state.showDemoWindow);
@@ -176,8 +168,24 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			if (fishingThread.joinable()) {
 				fishingThread.join();
 			}
+		}*/
+		state.manage();
+		if (state.fihing.load()) {
+
+			if (!state.fishingThread.joinable()) {
+				state.fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing), std::ref(state.shouldExit));
+			}
+
+			if (GetAsyncKeyState(cnf.stopFihKey) & 0x8000) {
+				state.fihing = false;
+			}
 		}
-		
+		else {
+
+			if (state.fishingThread.joinable()) {
+				state.fishingThread.join();
+			}
+		}
 	
 		
 			
@@ -273,59 +281,65 @@ void CleanupRenderTarget()
 		g_mainRenderTargetView = nullptr;
 	}
 }
-
-void ShowMainWindow(AppState& state, int& areaRadius /*ImGuiIO& io*/ )
-{
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	ImGui::Begin("FihBot v0.0.0.0", 0, state.flazhoks);
-
-	if (ImGui::BeginTable("split", 3))
-	{
-		ImGui::TableNextColumn(); ImGui::Checkbox("demo window", &state.showDemoWindow);
-		ImGui::TableNextColumn(); ImGui::Checkbox("debug,", &state.debug);
-
-		ImGui::EndTable();
-	}
-	
-	if (ImGui::Button("config")) {
-		
-		bool confOpen = true;
-		ImGui::Begin("Configuration", &confOpen);
-		ImGui::Text("Start Fishing"); ImGui::SameLine();
-		if (ImGui::Button("Fihkey")) {
-
-		}
-		ImGui::Text("Stop Fishing"); ImGui::SameLine();
-		if (ImGui::Button("Stopfih")) { //реализации пока нет
-
-		}
-		
-	}
-
-	ImGui::SliderInt("areaRadius", &areaRadius, 200.0f, 500.0f);
-	if (ImGui::Button("Start"))
-	{
-		state.fihing.store(true);
-	}
-	if (ImGui::Button("Stop"))
-	{
-		state.fihing.store(false);
-	}
-
-	if (ImGui::Button("close app"))
-		state.shouldExit = true;
-
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
-	ImGui::End();
-}
-
-void debugWindow(std::string statusMessage)
-{
-	ImGui::SetNextWindowSize(ImVec2(200, 200));
-	ImGui::Begin("debug");
-	ImGui::Text(statusMessage.c_str());
-	ImGui::End();
-}
+//
+//void ShowMainWindow()
+//{
+//	ImGuiIO& io = ImGui::GetIO(); (void)io;
+//	ImGui::Begin("FihBot v0.0.0.0", 0, state.flazhoks);
+//
+//	if (ImGui::BeginTable("split", 3))
+//	{
+//		ImGui::TableNextColumn(); ImGui::Checkbox("demo window", &state.showDemoWindow);
+//		ImGui::TableNextColumn(); ImGui::Checkbox("debug,", &state.debug);
+//
+//		ImGui::EndTable();
+//	}
+//	
+//	if (ImGui::Button("config")) {
+//		state.confOpen = true;
+//	}
+//
+//	ImGui::SliderInt("areaRadius", &cnf.areaRadius, 200, 250);
+//	if (ImGui::Button("Start"))
+//	{
+//		state.fihing.store(true);
+//	}
+//	if (ImGui::Button("Stop"))
+//	{
+//		state.fihing.store(false);
+//	}
+//
+//	if (ImGui::Button("close app"))
+//		state.shouldExit = true;
+//
+//	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
+//	ImGui::End();
+//}
+//
+//void configWindow() {
+//	ImGui::Begin("Configuration", &state.confOpen);
+//	ImGui::Text("Start Fishing"); ImGui::SameLine();
+//	char fihKeyname[64];
+//	char stopFihKeyname[64];
+//	GetKeyNameTextA(cnf.fihKey, fihKeyname, sizeof(fihKeyname));
+//	GetKeyNameTextA(cnf.stopFih, stopFihKeyname, sizeof(stopFihKeyname));
+//	if (ImGui::Button(fihKeyname)) {
+//
+//	}
+//	ImGui::Text("Stop Fishing"); ImGui::SameLine();
+//	if (ImGui::Button(stopFihKeyname)) { //реализации пока нет
+//
+//	}
+//	ImGui::End();
+//}
+//
+//void debugWindow(std::string statusMessage)
+//{
+//	ImGui::SetNextWindowSize(ImVec2(200, 200));
+//	ImGui::Begin("debug");
+//	ImGui::Text(statusMessage.c_str());
+//	ImGui::End();
+//}
 
 
 // Forward declare message handler from imgui_impl_win32.cpp
@@ -338,7 +352,17 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return true;
 	switch (msg)
 	{
-	
+	/*case WM_KEYDOWN:
+		if (state.confOpen) {
+			if (state.fihClicked) {
+				GetKeyNameTextA(lParam, cnf.fihKeyname, sizeof(cnf.fihKeyname));
+			}
+			if (state.stopfihClicked) {
+				GetKeyNameTextA(lParam, cnf.stopFihKeyname, sizeof(cnf.stopFihKeyname));
+			}
+		}
+		
+		return EXIT_SUCCESS;*/
 
 	case WM_SIZE:
 		if (wParam == SIZE_MINIMIZED)
