@@ -48,8 +48,7 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 
 void Vision::CaptureFih()
 {
-	int currentY;
-	static int prevY = 0;
+	
 	switch (status)
 	{
 	case STOPPED:
@@ -85,7 +84,7 @@ void Vision::CaptureFih()
 		getDesktopMat();
 		getImage();
         
-		currentY = boundRect.y;
+		
 		//std::cout << currentY << std::endl;
 		
 		/*if (abs(currentY - prevY) < 10) {
@@ -320,7 +319,7 @@ void Vision::getMaskColorBased(cv::Mat& imgMask, objType type) {
 }
 
 void Vision::getImage() {
-	const int MIN_CONTOUR_AREA = 50;
+	static const int MIN_CONTOUR_AREA = 50;
 
 	if (status != CATCH) {
 		img = cropMat();
@@ -347,7 +346,7 @@ void Vision::getImage() {
 
 	double maxArea = 0;
 	int maxAreaIdx = -1;
-	imgShow = img;
+	//imgShow = img;
 	//find rectangle for bobber
 	for (size_t i = 0; i < contours.size(); ++i) {
 		double area = cv::contourArea(contours[i]);
@@ -371,12 +370,15 @@ void Vision::getImage() {
 		
 		if (status != CATCH) {
 			if (boundRect.area() >= inWaterSize) {
-				cv::rectangle(imgShow, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+			}
+			else {
+				status = CATCH;
 			}
 		}
 		else {
 			if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize) {
-				cv::rectangle(imgShow, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
 			}
 		}
 	}
@@ -466,14 +468,14 @@ cv::Mat Vision::matchingMethod()
 
 void Vision::TextureForDebug()
 {
-	if (imgShow.empty()) {
+	if (img.empty()) {
 		return;
 	}
 	
 	// Создаём текстуру
 	D3D11_TEXTURE2D_DESC desc = {};
-	desc.Width = imgShow.cols;
-	desc.Height = imgShow.rows;
+	desc.Width = img.cols;
+	desc.Height = img.rows;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -482,8 +484,8 @@ void Vision::TextureForDebug()
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
 	D3D11_SUBRESOURCE_DATA initData = {};
-	initData.pSysMem = imgShow.data;
-	initData.SysMemPitch = imgShow.cols * 4;
+	initData.pSysMem = img.data;
+	initData.SysMemPitch = img.cols * 4;
 
 	ID3D11Texture2D* texture = nullptr;
 	g_pd3dDevice_->CreateTexture2D(&desc, &initData, &texture);

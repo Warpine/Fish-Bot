@@ -71,7 +71,7 @@ private:
 	cv::Rect scaleRect = cv::Rect(); 
 
 	cv::Mat img = cv::Mat();
-	cv::Mat imgShow;
+	//cv::Mat imgShow;
 	cv::Mat	imgHSV, imgMask;
 	std::vector<std::vector<cv::Point>> contours;
 	::RECT selectedArea = { 0 };
@@ -84,10 +84,12 @@ private:
 			{0, 14, 80, 207, 124, 255} //BOBBER
 
 	};
-
-	const int inWaterSize = 300;
+	//c высоты  550-800  ---- клюнуло  143-400
+	//с средней 950-1200 ---- клюнуло  208-450
+	//c низов   900-1200 ---- клюнуло  165-630
+	const int inWaterSize = 530; 
 	const int inScaleSize = 20;
-	const double threshold_value = 0.8;
+	//const double threshold_value = 0.8;
 	const cv::Mat templ = cv::imread("E:/IT/repos/imguiTest/src/scale.png", cv::IMREAD_COLOR);
 	cv::Mat templ4chnl;
 
