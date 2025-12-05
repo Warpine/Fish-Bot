@@ -131,11 +131,11 @@ public:
 		if (showMainWindow)
 			ShowMainWindow();
 
-		/*if (showDemoWindow)
-			ImGui::ShowDemoWindow(&showDemoWindow);*/
 
 		if (debug)
 			vision.debugWindow();
+		
+		
 		
 	}
 private:
@@ -152,14 +152,16 @@ private:
 			ImGui::EndTable();
 		}
 
-		if (ImGui::Button("config")) {
+		if (ImGui::Button("config", ImVec2(100, 40))) {
 			confOpen = true;
 		}
-		if (ImGui::Button("Start"))
+		if (ImGui::Button("Start", ImVec2(100, 40)))
 		{
 			fihing.store(true);
 		}
-		if (ImGui::Button("Stop"))
+		ImGui::SameLine();
+		
+		if (ImGui::Button("Stop", ImVec2(100, 40)))
 		{
 			fihing.store(false);
 		}

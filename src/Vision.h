@@ -39,7 +39,9 @@ private:
 		FINISHED
 	};
 
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> textureSRV = nullptr;
+	Microsoft::WRL::ComPtr <ID3D11ShaderResourceView> textureSRV = nullptr;
+	static inline ImTextureID imguiTexture = NULL;
+	
 	std::string statusMessage = "never started";
 
 	HDC deviceContext = nullptr;
@@ -69,6 +71,7 @@ private:
 	cv::Rect scaleRect = cv::Rect(); 
 
 	cv::Mat img = cv::Mat();
+	cv::Mat imgShow;
 	cv::Mat	imgHSV, imgMask;
 	std::vector<std::vector<cv::Point>> contours;
 	::RECT selectedArea = { 0 };
@@ -82,7 +85,7 @@ private:
 
 	};
 
-	const int inWaterSize = 400;
+	const int inWaterSize = 300;
 	const int inScaleSize = 20;
 	const double threshold_value = 0.8;
 	const cv::Mat templ = cv::imread("E:/IT/repos/imguiTest/src/scale.png", cv::IMREAD_COLOR);
@@ -103,11 +106,10 @@ private:
 	
 	cv::Mat matchingMethod();
 	void catchProcess();
-	void CreateTextureFromCVMat_DX11();
+	void TextureForDebug();
 	
 public:
 	void debugWindow();
-	void clearWindow();
 
 	std::atomic<time_t> timeNow;
 	const std::string winName = "Debug Window";

@@ -85,9 +85,9 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	
 
 	//window
-	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"_", nullptr };
+	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Blackmagic Design", nullptr };
 	::RegisterClassExW(&wc);
-	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED, wc.lpszClassName, L"A", WS_POPUP, 0, 0, screenWidth, screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
+	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST |  WS_EX_LAYERED, wc.lpszClassName, L"DaVinci Resolve", WS_POPUP, 0, 0, screenWidth, screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
 
 	//SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_ALPHA);
 	SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_COLORKEY);
@@ -186,21 +186,14 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			if (GetAsyncKeyState(config.stopFihKey) & 0x8000) {
 				state.fihing = false;
 			}
-			////////////////////////////////////////
-			/*CreateTextureFromCVMat_DX11(vizu.img, g_pd3dDevice);
-			ImGui::Begin("debugg");
-			ImGui::Image((ImTextureID)textureSRV.Get(), ImVec2(200, 200));
-			ImGui::End();*/
 			
-			////////////////////////////////////////////
 		}
-		/*else {
-
+		else {
 			if (state.fishingThread.joinable()) {
 				state.fishingThread.join();
 			}
-		}*/
-	
+		}
+		
 		
 			
 			//rendering
@@ -224,11 +217,10 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 		}
 	config.saveConfig();
-	state.fihing = false;
 	if (state.fishingThread.joinable()) {
 		state.fishingThread.join();
 	}
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 		// Cleanup
 		ImGui_ImplDX11_Shutdown();

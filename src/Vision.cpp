@@ -86,7 +86,7 @@ void Vision::CaptureFih()
 		getImage();
         
 		currentY = boundRect.y;
-		std::cout << currentY << std::endl;
+		//std::cout << currentY << std::endl;
 		
 		/*if (abs(currentY - prevY) < 10) {
 			prevY = 0;
@@ -320,6 +320,8 @@ void Vision::getMaskColorBased(cv::Mat& imgMask, objType type) {
 }
 
 void Vision::getImage() {
+	const int MIN_CONTOUR_AREA = 50;
+
 	if (status != CATCH) {
 		img = cropMat();
 	}
@@ -340,30 +342,47 @@ void Vision::getImage() {
 	//find countour
 	findContours(imgMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 	//drawContours(bobberBack, contours, -1, (0, 255, 0), 3);
+	
+	boundRect = cv::Rect();
 
-
+	double maxArea = 0;
+	int maxAreaIdx = -1;
+	imgShow = img;
 	//find rectangle for bobber
 	for (size_t i = 0; i < contours.size(); ++i) {
-		boundRect = cv::boundingRect(contours[i]);
+		double area = cv::contourArea(contours[i]);
 
-		if (status != CATCH)
-		{
-			if (boundRect.area() >= inWaterSize)
-			{           
-				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255), 3);
-			}
-			
+		
+		if (area < MIN_CONTOUR_AREA) {
+			continue;
 		}
-		else
-		{
-			if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize){
-				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255), 3);
-			}
-			
+
+		
+		if (area > maxArea) {
+			maxArea = area;
+			maxAreaIdx = i;
 		}
+	}
+
+	
+	if (maxAreaIdx >= 0) {
+		boundRect = cv::boundingRect(contours[maxAreaIdx]);
+		std::cout << boundRect.area() << std::endl;
+		
+		if (status != CATCH) {
+			if (boundRect.area() >= inWaterSize) {
+				cv::rectangle(imgShow, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+			}
+		}
+		else {
+			if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize) {
+				cv::rectangle(imgShow, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+			}
+		}
+	}
 	
 
-	}
+	
 }
 
 cv::Mat Vision::matchingMethod()
@@ -445,56 +464,50 @@ cv::Mat Vision::matchingMethod()
 	
 }
 
-void Vision::CreateTextureFromCVMat_DX11()
+void Vision::TextureForDebug()
 {
-	if (img.empty()) {
+	if (imgShow.empty()) {
 		return;
-	}
-	// Конвертируем в RGBA
-	cv::Mat rgbaImage;
-	if (img.channels() == 4) {
-		cv::cvtColor(img, rgbaImage, cv::COLOR_BGRA2RGBA);
-	}
-	else if (img.channels() == 1) {
-		cv::cvtColor(img, rgbaImage, cv::COLOR_GRAY2RGBA);
 	}
 	
 	// Создаём текстуру
 	D3D11_TEXTURE2D_DESC desc = {};
-	desc.Width = rgbaImage.cols;
-	desc.Height = rgbaImage.rows;
+	desc.Width = imgShow.cols;
+	desc.Height = imgShow.rows;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
 	D3D11_SUBRESOURCE_DATA initData = {};
-	initData.pSysMem = rgbaImage.data;
-	initData.SysMemPitch = rgbaImage.cols * 4;
+	initData.pSysMem = imgShow.data;
+	initData.SysMemPitch = imgShow.cols * 4;
 
 	ID3D11Texture2D* texture = nullptr;
 	g_pd3dDevice_->CreateTexture2D(&desc, &initData, &texture);
 
 	// Создаём шейдерный ресурс
 	g_pd3dDevice_->CreateShaderResourceView(texture, nullptr, &textureSRV);
+	
 	texture->Release();
 }
+
 void Vision::debugWindow() {
 	
-	CreateTextureFromCVMat_DX11();
-	
+	if (areaSelected) {
+		TextureForDebug();
+		imguiTexture = (ImTextureID)textureSRV.Get();
+	}
+	else {
+		imguiTexture = NULL;
+	}
 	
 	ImGui::Begin("debug");
 	ImGui::Text(statusMessage.c_str());
-	ImGui::Image((ImTextureID)textureSRV.Get(), ImVec2(config.areaRadius, config.areaRadius));
+	ImGui::Image(imguiTexture, ImVec2(config.areaRadius, config.areaRadius));
 	
 	ImGui::End();
-}
-void Vision::clearWindow() {
-	if (textureSRV != nullptr) {
-		textureSRV.Reset();
-	}
 }
 
