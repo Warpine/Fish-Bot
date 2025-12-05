@@ -2,7 +2,6 @@
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
 
-
 #include<Windows.h>
 #include<dwmapi.h>
 #include<d3d11.h>
@@ -14,52 +13,81 @@
 #include<imgui/imgui_impl_win32.h>
 
 
-#include"Vision.h" //Utility is already included in vision.h
+#include"Vision.h" //Utility is already included in Vision.h
+#include"Utility.h"
 
+//debug
+#include<iostream>
+#include <fstream>
+#include <io.h>
+#include <fcntl.h>
+#include <stdio.h>
+//debug
 
-static ID3D11Device*           g_pd3dDevice = nullptr;
-static ID3D11DeviceContext*    g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain*         g_pSwapChain = nullptr;
-static bool                    g_SwapChainOccluded = false;
-static UINT                    g_ResizeWidth = 0, g_ResizeHeight = 0;
-static ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
+//mb need to create globalVar header
+static ID3D11Device*             g_pd3dDevice = nullptr;
+static ID3D11DeviceContext*      g_pd3dDeviceContext = nullptr;
+static IDXGISwapChain*           g_pSwapChain = nullptr;
+static bool                      g_SwapChainOccluded = false;
+static UINT                      g_ResizeWidth = 0, g_ResizeHeight = 0;
+static ID3D11RenderTargetView*   g_mainRenderTargetView = nullptr;
 
 
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
-//void ShowMainWindow();
+void CreateConsole()
+{
+	AllocConsole();
 
-//void debugWindow(std::string statusMessage);
-//void configWindow();
+	// Перенаправление стандартного вывода (std::cout)
+	HANDLE stdHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+	int hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+	FILE* fp = _fdopen(hConHandle, "w");
+	freopen_s(&fp, "CONOUT$", "w", stdout);
+
+	// Перенаправление стандартного ввода (std::cin)
+	stdHandle = GetStdHandle(STD_INPUT_HANDLE);
+	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+	fp = _fdopen(hConHandle, "r");
+	freopen_s(&fp, "CONIN$", "r", stdin);
+
+	// Перенаправление стандартного ошибок (std::cerr)
+	stdHandle = GetStdHandle(STD_ERROR_HANDLE);
+	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+	fp = _fdopen(hConHandle, "w");
+	freopen_s(&fp, "CONOUT$", "w", stderr);
+
+	// Очищаем буферы, чтобы все сразу попадало в консоль
+	std::ios::sync_with_stdio();
+}
+
+
 
 ImGuiStyle SetupImGuiStyle();
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
-Config cnf;
-Vision vizu(cnf.areaRadius, cnf.fihKey, cnf.stopFihKey);
-AppState state(cnf, vizu.statusMessage);
+
 
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
-	
-	cnf.loadConfig();
 		
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
 	//statements, windows, etc
 	
-	
+	CreateConsole();
+	std::cout << "bydlo" << std::endl;
 	
 	
 
 	//window
 	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"_", nullptr };
 	::RegisterClassExW(&wc);
-	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED, wc.lpszClassName, L"A", WS_POPUP, 0, 0, state.screenWidth, state.screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
+	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED, wc.lpszClassName, L"A", WS_POPUP, 0, 0, screenWidth, screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
 
 	//SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_ALPHA);
 	SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_COLORKEY);
@@ -79,7 +107,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	io.Fonts->AddFontFromFileTTF("E:/IT/repos/imguiTest/external/fonts/Impact.ttf", 16.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
+	io.Fonts->AddFontFromFileTTF("E:/IT/repos/imguiTest/external/fonts/Comic Sans MS.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
@@ -102,6 +130,10 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	ImGui_ImplWin32_Init(hwnd);
 	ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
+	Config config;
+	config.loadConfig();
+	Vision vizu(config, g_pd3dDevice);
+	AppState state(config, vizu);
 	
 
 	//main loop
@@ -141,51 +173,33 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
 
-		/*if (state.confOpen)
-			configWindow();
-
-		if (state.showMainWindow)
-			ShowMainWindow();
-
-		if (state.showDemoWindow)
-			ImGui::ShowDemoWindow(&state.showDemoWindow);
-
-		if (state.debug)
-			debugWindow(vizu.statusMessage);
-
-		if (state.fihing.load()) {
-
-			if (!fishingThread.joinable()) { 
-				fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing), std::ref(state.shouldExit));
-			}
-
-			if (GetAsyncKeyState(cnf.stopFih) & 0x8000) {
-				state.fihing = false;
-			}
-		}
-		else {
-			
-			if (fishingThread.joinable()) {
-				fishingThread.join();
-			}
-		}*/
+		
 		state.manage();
+
+
 		if (state.fihing.load()) {
 
 			if (!state.fishingThread.joinable()) {
 				state.fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing), std::ref(state.shouldExit));
 			}
 
-			if (GetAsyncKeyState(cnf.stopFihKey) & 0x8000) {
+			if (GetAsyncKeyState(config.stopFihKey) & 0x8000) {
 				state.fihing = false;
 			}
+			////////////////////////////////////////
+			/*CreateTextureFromCVMat_DX11(vizu.img, g_pd3dDevice);
+			ImGui::Begin("debugg");
+			ImGui::Image((ImTextureID)textureSRV.Get(), ImVec2(200, 200));
+			ImGui::End();*/
+			
+			////////////////////////////////////////////
 		}
-		else {
+		/*else {
 
 			if (state.fishingThread.joinable()) {
 				state.fishingThread.join();
 			}
-		}
+		}*/
 	
 		
 			
@@ -209,8 +223,11 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			HRESULT hr = g_pSwapChain->Present(1, 0);
 			g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 		}
-	cnf.saveConfig();
+	config.saveConfig();
 	state.fihing = false;
+	if (state.fishingThread.joinable()) {
+		state.fishingThread.join();
+	}
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 		// Cleanup

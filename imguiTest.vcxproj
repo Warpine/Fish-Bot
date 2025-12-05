@@ -41,6 +41,7 @@
     <ClInclude Include="external\imgui\imstb_textedit.h" />
     <ClInclude Include="external\imgui\imstb_truetype.h" />
     <ClInclude Include="external\simpleini\SimpleIni.h" />
+    <ClInclude Include="src\Config.h" />
     <ClInclude Include="src\Utility.h" />
     <ClInclude Include="src\Vision.h" />
   </ItemGroup>

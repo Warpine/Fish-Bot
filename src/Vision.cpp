@@ -1,16 +1,28 @@
 ﻿#include "Vision.h"
-//#include <iostream>
+#include <iostream>
+#include <imgui/imgui.h>
 
-Vision::Vision(int& areaRadius, int& fihkey, int& stopfih) : areaRadius(areaRadius), fihKey(fihkey), stopFih(stopfih) {
+Vision::Vision(Config& config, ID3D11Device* g_pd3dDevice) : config(config), g_pd3dDevice_(g_pd3dDevice) {
 	if (!init) {
 		initWindow();
 	}
 	
-	cv::cvtColor(templ, templ4chnl, cv::COLOR_BGR2BGRA);
 }
 Vision::~Vision()
 {
-	
+	if (bitmap) {
+		DeleteObject(bitmap);
+		bitmap = nullptr;
+	}
+	if (memoryDeviceContext) {
+		DeleteDC(memoryDeviceContext);
+		memoryDeviceContext = nullptr;
+	}
+	if (windowDesk && deviceContext) {
+		ReleaseDC(windowDesk, deviceContext);
+		deviceContext = nullptr;
+	}
+
 }
 void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit) {
 
@@ -34,9 +46,10 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 	
 }
 
-void Vision::CaptureFih() 
+void Vision::CaptureFih()
 {
-
+	int currentY;
+	static int prevY = 0;
 	switch (status)
 	{
 	case STOPPED:
@@ -49,7 +62,7 @@ void Vision::CaptureFih()
 	case STARTED: //тут  должно быть закидывание удочки
 		getDesktopMat();
 		getImage();
-		showImage();
+		
 		statusMessage = "thrown";
 		pressKeyMouseLeft(350);
 		status = LOOKING;
@@ -59,23 +72,37 @@ void Vision::CaptureFih()
 		statusMessage = "looking for bobber";
 		getDesktopMat();
 		getImage();
-		showImage();
 		if (boundRect.area() >= inWaterSize) {
 			status = FOUND;
 			break;
 		}
+		
+		
 		break;
 	case FOUND:
 		statusMessage = "found and watching";
-		if (boundRect.area() < inWaterSize) //скорее всего не работает
-		{
-			status = CATCH;
-			pressKeyMouseLeft(15);
-			break;
-		}
+		
 		getDesktopMat();
 		getImage();
-		showImage();
+        
+		currentY = boundRect.y;
+		std::cout << currentY << std::endl;
+		
+		/*if (abs(currentY - prevY) < 10) {
+			prevY = 0;
+			status = CATCH;
+			pressKeyMouseLeft(15);
+		}
+		else {
+			prevY = currentY;
+		}*/
+		//if (boundRect.area() < inWaterSize) //скорее всего не работает
+		//{
+		//	status = CATCH;
+		//	pressKeyMouseLeft(15);
+		//	break;
+		//}
+		
 		
 		break;
 
@@ -84,7 +111,7 @@ void Vision::CaptureFih()
 		getDesktopMat();
 		getImage();
 		catchProcess();
-		showImage();
+		
 		
 		 //тут надо подумать над состоянием
 		
@@ -235,9 +262,9 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 	// ожидаем нажатие Num5 
 	while (fihingState.load()) {
 
-		if (GetAsyncKeyState(fihKey) & 0x8000) {
+		if (GetAsyncKeyState(config.fihKey) & 0x8000) {
 
-			while (GetAsyncKeyState(fihKey) & 0x8000) {
+			while (GetAsyncKeyState(config.fihKey) & 0x8000) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 			if (!fihingState.load()) break;
@@ -246,10 +273,10 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 			ScreenToClient(windowDesk, &cursorPos);
 
 			
-			selectedArea.left = cursorPos.x - areaRadius / 2;
-			selectedArea.top = cursorPos.y - areaRadius / 2;
-			selectedArea.right = cursorPos.x + areaRadius / 2;
-			selectedArea.bottom = cursorPos.y + areaRadius / 2;
+			selectedArea.left = cursorPos.x - config.areaRadius / 2;
+			selectedArea.top = cursorPos.y - config.areaRadius / 2;
+			selectedArea.right = cursorPos.x + config.areaRadius / 2;
+			selectedArea.bottom = cursorPos.y + config.areaRadius / 2;
 			break;
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -279,15 +306,15 @@ cv::Mat Vision::cropMat() {
 
 }
 
-void Vision::getMaskColorBased(cv::Mat& imgMask) {
+void Vision::getMaskColorBased(cv::Mat& imgMask, objType type) {
 
-	cv::Scalar Lower(objHSV[BOBBER][HMIN],
-		             objHSV[BOBBER][SMIN],
-		             objHSV[BOBBER][VMIN]);
+	cv::Scalar Lower(objHSV[type][HMIN],
+		             objHSV[type][SMIN],
+		             objHSV[type][VMIN]);
 
-	cv::Scalar Upper(objHSV[BOBBER][HMAX],
-		             objHSV[BOBBER][SMAX],
-		             objHSV[BOBBER][VMAX]);
+	cv::Scalar Upper(objHSV[type][HMAX],
+		             objHSV[type][SMAX],
+		             objHSV[type][VMAX]);
 
 	inRange(imgHSV, Lower, Upper, imgMask);
 }
@@ -306,10 +333,9 @@ void Vision::getImage() {
 		status = STOPPED;
 		return;
 	}
+	cvtColor(img, imgHSV, cv::COLOR_BGR2HSV); 
 
-	cvtColor(img, imgHSV, cv::COLOR_BGR2HSV); //exception
-
-	getMaskColorBased(imgMask);
+	getMaskColorBased(imgMask, BOBBER);
 
 	//find countour
 	findContours(imgMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
@@ -322,35 +348,21 @@ void Vision::getImage() {
 
 		if (status != CATCH)
 		{
-			if (boundRect.area() > inWaterSize)
+			if (boundRect.area() >= inWaterSize)
 			{           
 				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255), 3);
 			}
-			else
-			{
-				boundRect = cv::Rect();
-			}
+			
 		}
 		else
 		{
 			if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize){
 				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255), 3);
 			}
-			else {
-				boundRect = cv::Rect();
-			}
+			
 		}
 	
 
-	}
-}
-
-void Vision::showImage()
-{
-	if (!img.empty()) {
-		cv::namedWindow(winName);
-		cv::imshow(winName, img);
-		cv::waitKey(5);
 	}
 }
 
@@ -364,6 +376,8 @@ cv::Mat Vision::matchingMethod()
 
 	else {
 		int match_method = cv::TM_SQDIFF_NORMED;
+
+		cv::cvtColor(templ, templ4chnl, cv::COLOR_BGR2BGRA);
 
 		if (templ4chnl.empty()) {
 			statusMessage = "Template Not Found";
@@ -397,7 +411,7 @@ cv::Mat Vision::matchingMethod()
 			return cv::Mat();
 		}
 			cv::normalize(result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
-			double thresholdValue = 3.0 / 255.0;
+			double thresholdValue = 2.0 / 255.0;
 			double minVal, maxVal; 
 			cv::Point minLoc, maxLoc, matchLoc;
 
@@ -421,8 +435,7 @@ cv::Mat Vision::matchingMethod()
 
 			return fullScale(scaleRect).clone();
 			//работает по такому же принципу как кроп мат
-			//вроде нужен только скейл рект в общем пространстве
-			//scaleMat = fullScale(scaleRect).clone();
+			
 
 
 
@@ -431,3 +444,57 @@ cv::Mat Vision::matchingMethod()
 	}
 	
 }
+
+void Vision::CreateTextureFromCVMat_DX11()
+{
+	if (img.empty()) {
+		return;
+	}
+	// Конвертируем в RGBA
+	cv::Mat rgbaImage;
+	if (img.channels() == 4) {
+		cv::cvtColor(img, rgbaImage, cv::COLOR_BGRA2RGBA);
+	}
+	else if (img.channels() == 1) {
+		cv::cvtColor(img, rgbaImage, cv::COLOR_GRAY2RGBA);
+	}
+	
+	// Создаём текстуру
+	D3D11_TEXTURE2D_DESC desc = {};
+	desc.Width = rgbaImage.cols;
+	desc.Height = rgbaImage.rows;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	D3D11_SUBRESOURCE_DATA initData = {};
+	initData.pSysMem = rgbaImage.data;
+	initData.SysMemPitch = rgbaImage.cols * 4;
+
+	ID3D11Texture2D* texture = nullptr;
+	g_pd3dDevice_->CreateTexture2D(&desc, &initData, &texture);
+
+	// Создаём шейдерный ресурс
+	g_pd3dDevice_->CreateShaderResourceView(texture, nullptr, &textureSRV);
+	texture->Release();
+}
+void Vision::debugWindow() {
+	
+	CreateTextureFromCVMat_DX11();
+	
+	
+	ImGui::Begin("debug");
+	ImGui::Text(statusMessage.c_str());
+	ImGui::Image((ImTextureID)textureSRV.Get(), ImVec2(config.areaRadius, config.areaRadius));
+	
+	ImGui::End();
+}
+void Vision::clearWindow() {
+	if (textureSRV != nullptr) {
+		textureSRV.Reset();
+	}
+}
+
