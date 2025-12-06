@@ -58,6 +58,15 @@ private:
 	ID3D11Device* g_pd3dDevice_;
 	///////////////////////////
 	
+	
+	//must be reset when status == FINISHED
+	static inline INPUT inputCatch = { 0 };
+	
+	//used in catchProcess
+	const int scalePosDOWN = 70;
+	//used in catchProcess
+	const int scalePosUP = 140;
+
 	HWND windowDesk = nullptr;
 	//cv::Mat img = cv::Mat();
 	cv::Mat fullScale = cv::Mat();
@@ -66,8 +75,10 @@ private:
 	Status status = STOPPED;
 	cv::Point bestMatch = cv::Point(0);
 
-	//вот эти два сбрасываются при выходе из мейн цикла
+	//сбрасываeтся при выходе из мейн цикла
 	cv::Rect cropRect = cv::Rect();
+	/// //////////////////////
+
 	cv::Rect scaleRect = cv::Rect(); 
 
 	cv::Mat img = cv::Mat();
@@ -84,11 +95,11 @@ private:
 			{0, 14, 80, 207, 124, 255} //BOBBER
 
 	};
-	//c высоты  550-800  ---- клюнуло  143-400
-	//с средней 950-1200 ---- клюнуло  208-450
-	//c низов   900-1200 ---- клюнуло  165-630
-	const int inWaterSize = 530; 
-	const int inScaleSize = 20;
+	//c высоты  800-875   ---- клюнуло  209-450
+	//с средней 1500-1700 ---- клюнуло  252-644
+	//c низов   2400-2900 ---- клюнуло  546-975
+	const int inWaterSize = 470; 
+	const int inScaleSize = 80;
 	//const double threshold_value = 0.8;
 	const cv::Mat templ = cv::imread("E:/IT/repos/imguiTest/src/scale.png", cv::IMREAD_COLOR);
 	cv::Mat templ4chnl;

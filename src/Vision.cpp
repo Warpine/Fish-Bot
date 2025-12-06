@@ -47,8 +47,11 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 }
 
 void Vision::CaptureFih()
-{
-	
+{   
+	//uses when CATCH for the first time in fishing cycle
+	//and became true when FINISHED
+	static bool firstTimeSleep = true;
+
 	switch (status)
 	{
 	case STOPPED:
@@ -63,12 +66,13 @@ void Vision::CaptureFih()
 		getImage();
 		
 		statusMessage = "thrown";
-		pressKeyMouseLeft(350);
+		pressKeyMouseLeft(500);
 		status = LOOKING;
 		break;
 
 	case LOOKING:
 		statusMessage = "looking for bobber";
+		std::this_thread::sleep_for(std::chrono::milliseconds(650));
 		getDesktopMat();
 		getImage();
 		if (boundRect.area() >= inWaterSize) {
@@ -80,11 +84,15 @@ void Vision::CaptureFih()
 		break;
 	case FOUND:
 		statusMessage = "found and watching";
+	
 		
 		getDesktopMat();
 		getImage();
         
-		
+		if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize) {
+			pressKeyMouseLeft(15);
+			status = CATCH;
+		}
 		//std::cout << currentY << std::endl;
 		
 		/*if (abs(currentY - prevY) < 10) {
@@ -107,12 +115,19 @@ void Vision::CaptureFih()
 
 	case CATCH:
 		statusMessage = "catching";
+		
+		if (firstTimeSleep) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			firstTimeSleep = false;
+		}
 		getDesktopMat();
 		getImage();
 		catchProcess();
 		
-		
-		 //тут надо подумать над состоянием
+		std::cout << boundRect.area() << std::endl; //debug
+		if (boundRect.area() <= inScaleSize) { //как срать сука какая тут логика нужна
+			status = FINISHED;
+		}
 		
 
 		break;
@@ -131,7 +146,9 @@ void Vision::CaptureFih()
 
 	case FINISHED:
 		statusMessage = "Fihing end";
-
+		
+		inputCatch = { 0 };
+		firstTimeSleep = true;
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		status = STARTED;
 		break;
@@ -145,49 +162,38 @@ void Vision::CaptureFih()
 
 }
 
-void Vision::catchProcess() { //возможно надо сделать ещё один поток
+void Vision::catchProcess() { 
 	
-	static INPUT input = { 0 };
+	inputCatch.type = INPUT_MOUSE;
+	inputCatch.mi.dx = 0;
+	inputCatch.mi.dy = 0;
+
 	if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize)
 	{
-		
 		cv::Point center(
 			boundRect.x + boundRect.width / 2,
 			boundRect.y + boundRect.height / 2
 		);
+		//std::cout << center.x << std::endl; //debug
+
+		if (center.x <= scalePosDOWN && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)) {
+			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+			SendInput(1, &inputCatch, sizeof(INPUT));
+			std::cout << "Mouse DOWN" << std::endl;
+		}
+		if (center.x >= scalePosUP && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP)) {
+			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+			SendInput(1, &inputCatch, sizeof(INPUT));
+			std::cout << "Mouse UP" << std::endl;
+		}
+
 		
-		input.type = INPUT_MOUSE;
-		if (center.x >= 150 && input.mi.dwFlags != MOUSEEVENTF_LEFTUP)
-		{
-			input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-
-			SendInput(1, &input, sizeof(input));
-		}
-		if (center.x <= 48 && input.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)
-		{
-			input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-
-			SendInput(1, &input, sizeof(input));
-		}
+		
 	}
-	else {
-		if (boundRect.empty()) {
-			status = STOPPED;
-			statusMessage = "boundRect empty restart";
-			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-			return;
-		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
-		if (input.mi.dwFlags != MOUSEEVENTF_LEFTUP)
-		{
-			input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-
-			SendInput(1, &input, sizeof(input));
-		}
-
-		return;
+	
 	}
-}
+
+
 
 void Vision::stopCapture()
 {
@@ -211,7 +217,9 @@ void Vision::pressKeyMouseLeft(int KeyUpMillisec) {
 
 	input.type = INPUT_MOUSE;
 	input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-	
+	input.mi.dx = 0;
+	input.mi.dy = 0;
+
 	SendInput(1, &input, sizeof(input));
 	std::this_thread::sleep_for(std::chrono::milliseconds(KeyUpMillisec));
 	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
@@ -338,43 +346,43 @@ void Vision::getImage() {
 
 	getMaskColorBased(imgMask, BOBBER);
 
+	//сюда нужен гаусиан блюр и временно убрать переход в катч, замерить inWaterSize
+	cv::Mat blurred;
+	GaussianBlur(imgMask, blurred, cv::Size(3, 3), 0);
+
 	//find countour
-	findContours(imgMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-	//drawContours(bobberBack, contours, -1, (0, 255, 0), 3);
+	findContours(blurred, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+	
 	
 	boundRect = cv::Rect();
 
 	double maxArea = 0;
 	int maxAreaIdx = -1;
-	//imgShow = img;
-	//find rectangle for bobber
+	
+	//find max area
 	for (size_t i = 0; i < contours.size(); ++i) {
+
 		double area = cv::contourArea(contours[i]);
 
-		
 		if (area < MIN_CONTOUR_AREA) {
 			continue;
 		}
-
-		
 		if (area > maxArea) {
 			maxArea = area;
 			maxAreaIdx = i;
 		}
 	}
 
-	
+	//find rect for bobber
 	if (maxAreaIdx >= 0) {
 		boundRect = cv::boundingRect(contours[maxAreaIdx]);
-		std::cout << boundRect.area() << std::endl;
+		//std::cout << boundRect.area() << std::endl;
 		
 		if (status != CATCH) {
 			if (boundRect.area() >= inWaterSize) {
 				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
 			}
-			else {
-				status = CATCH;
-			}
+
 		}
 		else {
 			if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize) {
@@ -431,12 +439,19 @@ cv::Mat Vision::matchingMethod()
 			std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 			return cv::Mat();
 		}
-			cv::normalize(result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
-			double thresholdValue = 2.0 / 255.0;
-			double minVal, maxVal; 
-			cv::Point minLoc, maxLoc, matchLoc;
+			
 
 			
+			double minVal; double maxVal;
+			cv::Point minLoc, maxLoc, matchLoc;
+
+			if (match_method != cv::TM_SQDIFF_NORMED && match_method != cv::TM_CCOEFF_NORMED && match_method != cv::TM_CCORR_NORMED) {
+				normalize(result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
+			}
+			
+			
+
+			double thresholdValue = 12 / 255.0;
 			threshold(result, result, thresholdValue, 1.0, cv::THRESH_BINARY);
 
 			minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat());
@@ -452,8 +467,11 @@ cv::Mat Vision::matchingMethod()
 				return cv::Mat();
 			}
 			
+			
 			scaleRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
-
+			scaleRect.height -= 24;
+			
+			//std::this_thread::sleep_for(std::chrono::months(2));
 			return fullScale(scaleRect).clone();
 			//работает по такому же принципу как кроп мат
 			
@@ -508,7 +526,12 @@ void Vision::debugWindow() {
 	
 	ImGui::Begin("debug");
 	ImGui::Text(statusMessage.c_str());
-	ImGui::Image(imguiTexture, ImVec2(config.areaRadius, config.areaRadius));
+	if (status != CATCH) {
+		ImGui::Image(imguiTexture, ImVec2(config.areaRadius, config.areaRadius));
+	}
+	else {
+		ImGui::Image(imguiTexture, ImVec2(scaleRect.width, scaleRect.height));
+	}
 	
 	ImGui::End();
 }
