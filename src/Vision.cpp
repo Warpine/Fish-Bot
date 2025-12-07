@@ -200,9 +200,9 @@ void Vision::stopCapture()
 	if (cv::getWindowProperty(winName, cv::WND_PROP_VISIBLE) > 0) {
 		cv::destroyWindow(winName);
 	}
-	if(bitmap) DeleteObject(bitmap);
+	if (bitmap)              DeleteObject(bitmap);
 	if (memoryDeviceContext) DeleteDC(memoryDeviceContext);
-	if (deviceContext) ReleaseDC(windowDesk, deviceContext);
+	if (deviceContext)       ReleaseDC(windowDesk, deviceContext);
 	gdiInitialized = false;
 	status = STOPPED;
 	statusMessage = "Not watching";
@@ -266,7 +266,7 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 
 	POINT cursorPos;
 	statusMessage = "waiting for area selection";
-	// ожидаем нажатие Num5 
+	
 	while (fihingState.load()) {
 
 		if (GetAsyncKeyState(config.fihKey) & 0x8000) {
