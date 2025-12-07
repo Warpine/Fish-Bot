@@ -3,8 +3,7 @@
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
 #include <Windows.h>
-//#include<atomic>
-//#include"Utility.h"
+
 #include <wrl/client.h>
 #include <d3d11.h>
 
@@ -128,14 +127,15 @@ private:
 	void catchProcess();
 	void TextureForDebug();
 
-	~Vision();
+	
 public:
 	void debugWindow();
 
-	std::atomic<time_t> timeNow;
+	std::atomic<time_t> startTime;
 	
 	void startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit);
 	Vision(Config& config, ID3D11Device* g_pd3dDevice);
+	~Vision();
 	
 };
 

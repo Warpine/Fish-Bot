@@ -106,29 +106,32 @@ private:
 	Vision& vision;
 	Config& config;
 
-	bool showDemoWindow = false;
-	bool showAnotherWindow = false;
-	bool showMainWindow = true;
+	
+	//bool showAnotherWindow = false;
+	bool showMainWin = true;
 	bool showHint = true;
 	bool debug = false;
-	bool confOpen = false;
+	bool bindsOpen = false;
+	bool settingsOpen = false;
 	
-	
-	
+	/*nt ButtonX = 100;
+	int ButtonY = 36;
+	ImVec2 ButtonVec = ImVec2(ButtonX, ButtonY);*/
 
-	ImGuiWindowFlags flazhoks =
-		ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoCollapse;
+	/*ImGuiWindowFlags flazhoks = ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoResize;*/ //ImGuiWindowFlags_NoCollapse
 public:
 	AppState(Config& cnf, Vision& vision) : config(cnf), vision(vision) {}
 
 	void manage() {
-		if (confOpen) {
-			
-			config.window(confOpen);
+		if (bindsOpen && showMainWin) {
+			config.window(bindsOpen);
+		}
+		if (settingsOpen && showMainWin) {
+			config.settingsWindow(settingsOpen);
 		}
 
-		if (showMainWindow)
+		if (showMainWin)
 			ShowMainWindow();
 
 
@@ -142,34 +145,40 @@ private:
 	void ShowMainWindow()
 	{
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
-		ImGui::Begin("FihBot v0.0.0.0", 0, flazhoks);
-
-		if (ImGui::BeginTable("split", 3))
-		{
-			ImGui::TableNextColumn(); ImGui::Checkbox("demo window", &showDemoWindow);
-			ImGui::TableNextColumn(); ImGui::Checkbox("debug,", &debug);
-
-			ImGui::EndTable();
-		}
-
-		if (ImGui::Button("config", ImVec2(100, 40))) {
-			confOpen = true;
-		}
-		if (ImGui::Button("Start", ImVec2(100, 40)))
+		ImGui::Begin("FihBot v0.0.0.0", 0, config.flazhoks);
+		
+		if (ImGui::Button("Start", ImVec2(config.ButtonX, config.ButtonY*2)))
 		{
 			fihing.store(true);
 		}
-		ImGui::SameLine();
-		
-		if (ImGui::Button("Stop", ImVec2(100, 40)))
-		{
-			fihing.store(false);
+		ImGui::SameLine(config.ButtonX*3);
+
+
+
+		ImGui::BeginGroup();
+		if (ImGui::Button("Binds", config.standartButton)) {
+
+			if (!bindsOpen) { bindsOpen = true; }
+
+			else { bindsOpen = false; }
+
 		}
+		
+		if (ImGui::Button("Settings", config.standartButton)) {
 
-		ImGui::SliderInt("areaRadius", &config.areaRadius, 200, 250);
+			if (!settingsOpen) { settingsOpen = true; }
 
-		if (ImGui::Button("close app"))
+			else { settingsOpen = false; }
+		}
+		if (ImGui::Button("Close", config.standartButton))
 			shouldExit = true;
+		ImGui::EndGroup();
+		
+
+		
+
+		
+		ImGui::Checkbox("debug", &debug);
 
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
 		ImGui::End();

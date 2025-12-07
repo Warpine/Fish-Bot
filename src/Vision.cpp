@@ -66,7 +66,7 @@ void Vision::CaptureFih()
 		getImage();
 		
 		statusMessage = "thrown";
-		pressKeyMouseLeft(500);
+		pressKeyMouseLeft(config.throwTimeMs);
 		status = LOOKING;
 		break;
 
@@ -93,22 +93,7 @@ void Vision::CaptureFih()
 			pressKeyMouseLeft(15);
 			status = CATCH;
 		}
-		//std::cout << currentY << std::endl;
 		
-		/*if (abs(currentY - prevY) < 10) {
-			prevY = 0;
-			status = CATCH;
-			pressKeyMouseLeft(15);
-		}
-		else {
-			prevY = currentY;
-		}*/
-		//if (boundRect.area() < inWaterSize) //скорее всего не работает
-		//{
-		//	status = CATCH;
-		//	pressKeyMouseLeft(15);
-		//	break;
-		//}
 		
 		
 		break;

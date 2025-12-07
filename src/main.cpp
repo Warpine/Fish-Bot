@@ -109,11 +109,13 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.Fonts->AddFontFromFileTTF("E:/IT/repos/imguiTest/external/fonts/Comic Sans MS.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 	//style and scaling
-	ImGuiStyle style = SetupImGuiStyle();
+	ImGuiStyle style;
+	ImGui::StyleColorsDark();
+	//ImGuiStyle style = SetupImGuiStyle();
 	style.ScaleAllSizes(mainScale);
 	style.FontScaleDpi = mainScale;
 	io.ConfigDpiScaleFonts = true;          // [Experimental] Automatically overwrite style.FontScaleDpi in Begin() when Monitor DPI changes. This will scale fonts but _NOT_ scale sizes/padding for now.
