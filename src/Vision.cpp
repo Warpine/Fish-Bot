@@ -106,11 +106,12 @@ void Vision::CaptureFih()
 			break;
 		}
 
-		if (boundRect.empty() && counter == 5) {
+		if (boundRect.empty()) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 			SendInput(1, &inputCatch, sizeof(INPUT));
 
 			status = FINISHED;
+			break;
 		}
 		
 		break;
@@ -118,7 +119,7 @@ void Vision::CaptureFih()
 	case FINISHED:
 		statusMessage = "Fihing end";
 		
-		
+		counter = 0;
 		storedRect = cv::Rect();
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		status = STARTED;
@@ -126,7 +127,7 @@ void Vision::CaptureFih()
 	default:
 		break;
 	}
-
+	
 
 }
 
