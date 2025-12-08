@@ -48,11 +48,10 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 
 void Vision::CaptureFih()
 {   
-	
+	static int counter = 0;
 
 	switch (status)
 	{
-	
 
 	case STARTED: 
 		getDesktopMat();
@@ -102,8 +101,12 @@ void Vision::CaptureFih()
 		catchProcess();
 		
 		//std::cout << "boundRect.area = " << boundRect.area() << std::endl; //debug
-		
-		if (boundRect.area() < inScaleSize) {
+		if (boundRect.empty() && counter != 5) {
+			counter++;
+			break;
+		}
+
+		if (boundRect.empty() && counter == 5) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 			SendInput(1, &inputCatch, sizeof(INPUT));
 
@@ -115,8 +118,7 @@ void Vision::CaptureFih()
 	case FINISHED:
 		statusMessage = "Fihing end";
 		
-		//inputCatch = { 0 };
-		//firstTimeSleep = true;
+		
 		storedRect = cv::Rect();
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		status = STARTED;
@@ -309,7 +311,7 @@ void Vision::getImage() {
 
 	getMaskColorBased(imgMask, BOBBER);
 
-	//сюда нужен гаусиан блюр и временно убрать переход в катч, замерить inWaterSize
+	
 	cv::Mat blurred;
 	GaussianBlur(imgMask, blurred, cv::Size(3, 3), 0);
 
@@ -371,8 +373,7 @@ void Vision::getImage() {
  */
 cv::Mat Vision::matchingMethod(matchingEnum type)
 {
-	//static cv::Rect roi(0, fullScale.rows / 2, fullScale.cols, fullScale.rows - fullScale.rows / 2);
-	//static cv::Mat mask = cv::Mat::ones(fullScale.rows, fullScale.cols, CV_8UC1);
+	
 	int startRow = fullScale.rows * 0.45;
 	cv::Mat cropped = fullScale(cv::Range(startRow, fullScale.rows), cv::Range::all());
 
