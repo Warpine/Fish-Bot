@@ -90,7 +90,7 @@ void Vision::CaptureFih()
 		getImage();
         
 		if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize) {
-			pressKeyMouseLeft(15);
+			pressKeyMouseLeft(10);
 			status = CATCH;
 		}
 		
@@ -101,16 +101,23 @@ void Vision::CaptureFih()
 	case CATCH:
 		statusMessage = "catching";
 		
-		if (firstTimeSleep) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		/*if (firstTimeSleep) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(15));
 			firstTimeSleep = false;
-		}
+		}*/
 		getDesktopMat();
 		getImage();
+		if (img.empty()) {
+			break;
+		}
 		catchProcess();
 		
-		std::cout << boundRect.area() << std::endl; //debug
-		if (boundRect.area() <= inScaleSize) { //как срать сука какая тут логика нужна
+		std::cout << "boundRect.area = " << boundRect.area() << std::endl; //debug
+		
+		if (boundRect.area() < inScaleSize) {
+			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+			SendInput(1, &inputCatch, sizeof(INPUT));
+
 			status = FINISHED;
 		}
 		
@@ -132,7 +139,7 @@ void Vision::CaptureFih()
 	case FINISHED:
 		statusMessage = "Fihing end";
 		
-		inputCatch = { 0 };
+		//inputCatch = { 0 };
 		firstTimeSleep = true;
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		status = STARTED;
@@ -142,7 +149,7 @@ void Vision::CaptureFih()
 	}
 
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 
 }
@@ -159,7 +166,7 @@ void Vision::catchProcess() {
 			boundRect.x + boundRect.width / 2,
 			boundRect.y + boundRect.height / 2
 		);
-		//std::cout << center.x << std::endl; //debug
+		//std::cout << "center.x = "<< center.x << std::endl; //debug
 
 		if (center.x <= scalePosDOWN && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
@@ -177,8 +184,6 @@ void Vision::catchProcess() {
 	}
 	
 	}
-
-
 
 void Vision::stopCapture()
 {
@@ -312,19 +317,17 @@ void Vision::getMaskColorBased(cv::Mat& imgMask, objType type) {
 }
 
 void Vision::getImage() {
-	static const int MIN_CONTOUR_AREA = 50;
+	
 
 	if (status != CATCH) {
 		img = cropMat();
 	}
 	else {
-		img = matchingMethod();
+		img = matchingMethod(SCALE, scaleRect);
 	}
 	
 	if (img.empty()) {
-		statusMessage = "img empty restarting...";
-		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		status = STOPPED;
+		std::cout << "img.empty retry" << std::endl;
 		return;
 	}
 	cvtColor(img, imgHSV, cv::COLOR_BGR2HSV); 
@@ -349,7 +352,7 @@ void Vision::getImage() {
 
 		double area = cv::contourArea(contours[i]);
 
-		if (area < MIN_CONTOUR_AREA) {
+		if (area < inScaleSize) {
 			continue;
 		}
 		if (area > maxArea) {
@@ -380,22 +383,33 @@ void Vision::getImage() {
 	
 }
 
-cv::Mat Vision::matchingMethod()
+/** @brief Matches the given template, no mask.
+
+@param type of object see matchingEnum
+@param match_method OpenCV enum for template matching
+@param type thresholding type (see #ThresholdTypes).
+@param storedRect is a rect of area on screen, that matched the template, reset every FINISHED state
+@return  fullScale(storedRect).clone() 
+
+@sa  thresholdWithMask, adaptiveThreshold, findContours, compare, min, max
+ */
+cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect)
 {
-	if(!scaleRect.empty())
+
+	if(!storedRect.empty())
 	{ 
-		return fullScale(scaleRect).clone();
+		return fullScale(storedRect).clone();
 	
 	}
 
 	else {
-		int match_method = cv::TM_SQDIFF_NORMED;
-
-		cv::cvtColor(templ, templ4chnl, cv::COLOR_BGR2BGRA);
-
+		//int match_method = cv::TM_SQDIFF_NORMED;
+		cv::Mat templ4chnl;
+		cv::cvtColor(matchingTempl[type], templ4chnl, cv::COLOR_BGR2BGRA);
+	    
 		if (templ4chnl.empty()) {
 			statusMessage = "Template Not Found";
-			scaleRect = cv::Rect();
+			storedRect = cv::Rect();
 			std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 			return cv::Mat();
 		}
@@ -410,7 +424,7 @@ cv::Mat Vision::matchingMethod()
 
 		
 		try {
-			cv::matchTemplate(fullScale, templ4chnl, result, match_method); 
+			cv::matchTemplate(fullScale, templ4chnl, result, matchingModes[type]);
 		}
 		catch (const cv::Exception& e) {
 			if (fullScale.type() != templ4chnl.type())
@@ -420,7 +434,7 @@ cv::Mat Vision::matchingMethod()
 			else {
 				statusMessage = "idk exeption lol";
 			}
-			scaleRect = cv::Rect();
+			storedRect = cv::Rect();
 			std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 			return cv::Mat();
 		}
@@ -430,34 +444,49 @@ cv::Mat Vision::matchingMethod()
 			double minVal; double maxVal;
 			cv::Point minLoc, maxLoc, matchLoc;
 
-			if (match_method != cv::TM_SQDIFF_NORMED && match_method != cv::TM_CCOEFF_NORMED && match_method != cv::TM_CCORR_NORMED) {
+			if  (  matchingModes[type] != cv::TM_SQDIFF_NORMED
+				&& matchingModes[type] != cv::TM_CCOEFF_NORMED
+				&& matchingModes[type] != cv::TM_CCORR_NORMED) 
+			{
 				normalize(result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
 			}
 			
 			
 
-			double thresholdValue = 12 / 255.0;
-			threshold(result, result, thresholdValue, 1.0, cv::THRESH_BINARY);
+			double thresholdValue = (double)matchingThresholds[type] / 255.0;
+			threshold(result, result, thresholdValue, 1.0, matchingThTypes[type]);
 
 			minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat());
 
 			
 			
 
-			if (match_method == cv::TM_SQDIFF || match_method == cv::TM_SQDIFF_NORMED) {
+			if (matchingModes[type] == cv::TM_SQDIFF || matchingModes[type] == cv::TM_SQDIFF_NORMED) {
+				if (minLoc == cv::Point()) {
+					std::cout << "MINLOC EMPTY RETRY" << std::endl;
+					return cv::Mat();
+				}
 				matchLoc = minLoc;
 			}
 			else {
-				statusMessage = "cringe";
-				return cv::Mat();
+				if (maxLoc == cv::Point()) {
+					std::cout << "MAXLOC EMPTY RETRY" << std::endl;
+					return cv::Mat();
+				}
+				matchLoc = maxLoc;
 			}
 			
 			
-			scaleRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
-			scaleRect.height -= 24;
+			
+			storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
+			if (status == CATCH) {
+				storedRect.height -= 24;
+				//storedRect.x += 10; //подбирается индивидуально под скрин
+				storedRect.width -= 20; //подбирается индивидуально под скрин
+			}
 			
 			//std::this_thread::sleep_for(std::chrono::months(2));
-			return fullScale(scaleRect).clone();
+			return fullScale(storedRect).clone();
 			//работает по такому же принципу как кроп мат
 			
 

@@ -38,16 +38,24 @@ private:
 		FINISHED
 	};
 
+	//for debug window display
 	Microsoft::WRL::ComPtr <ID3D11ShaderResourceView> textureSRV = nullptr;
 	static inline ImTextureID imguiTexture = NULL;
-	
 	std::string statusMessage = "never started";
+	const std::string winName = "Debug Window";
 
+
+	//for getDesktopMat
 	HDC deviceContext = nullptr;
 	HDC memoryDeviceContext = nullptr;
 	HBITMAP bitmap = nullptr;
 	BITMAPINFOHEADER bi;
 	bool gdiInitialized = false;
+	
+	//used in getDesktopMat
+	cv::Mat fullScale = cv::Mat();
+	/////////////////////////
+
 
 	//in vision class constructor
 	Config& config;
@@ -60,26 +68,23 @@ private:
 	static inline INPUT inputCatch = { 0 };
 	
 	//used in catchProcess
-	const int scalePosDOWN = 70;
+	const int scalePosDOWN = 120;
 	//used in catchProcess
-	const int scalePosUP = 140;
+	const int scalePosUP = 130;
 
 	//used in initWindow
 	bool init = false;
 	//used in initWindow
 	HWND windowDesk = nullptr;
 
-	//used in getDesktopMat
-	cv::Mat fullScale = cv::Mat();
 	//used in selectAreaWithMouse
 	::RECT selectedArea = { 0 };
-	
 	bool areaSelected = false;
 
 	//for overal logic control
 	Status status = STOPPED;
 
-	cv::Point bestMatch = cv::Point(0);
+	
 
 	//reset when fishing cycle end
 	cv::Rect cropRect = cv::Rect();
@@ -94,8 +99,8 @@ private:
 	//c высоты  800-875   ---- клюнуло  209-450
 	//с средней 1500-1700 ---- клюнуло  252-644
 	//c низов   2400-2900 ---- клюнуло  546-975
-	const int inWaterSize = 470;
-	const int inScaleSize = 80;
+	const int inWaterSize = 600;
+	const int inScaleSize = 30;
 	
 	//add new objects here
 	const std::vector<std::vector<int>> objHSV = {
@@ -104,13 +109,34 @@ private:
 
 	};
 	
-	//template for matching
-	const cv::Mat templ = cv::imread("E:/IT/repos/imguiTest/src/scale.png", cv::IMREAD_COLOR);
-	cv::Mat templ4chnl;
+	//template for matching/////////////////////////////////////////////////////////
+	enum matchingEnum {
+		SCALE,
+		SALAD
+	};
+	std::vector<int> matchingThresholds = {
+		12,
+		12
+	};
+    
+	const std::vector<cv::Mat> matchingTempl ={   
+		cv::imread("E:/IT/repos/imguiTest/src/scale1.png", cv::IMREAD_COLOR),
+		cv::imread("E:/IT/repos/imguiTest/src/scale.png", cv::IMREAD_COLOR),
+	};
 
-	const std::string winName = "Debug Window";
+	const std::vector<cv::TemplateMatchModes> matchingModes = {
+		cv::TM_SQDIFF_NORMED,
+		cv::TM_SQDIFF_NORMED
+	};
 
+	const std::vector<cv::ThresholdTypes> matchingThTypes = {
+		cv::THRESH_BINARY,
+		cv::THRESH_BINARY
+	};
+	//this all related with matchingEnum
+	//////////////////////////////////////////////////////////////////////////
 	
+
 	void CaptureFih();
 	void stopCapture();
 	void pressKeyMouseLeft(int KeyUpMillisec);
@@ -123,7 +149,7 @@ private:
 	void getMaskColorBased(cv::Mat& imgMask, objType type);
 	void getImage();
 	
-	cv::Mat matchingMethod();
+	cv::Mat matchingMethod(matchingEnum type, cv::Rect& storedRect);
 	void catchProcess();
 	void TextureForDebug();
 
