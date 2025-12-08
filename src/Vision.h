@@ -28,13 +28,10 @@ private:
 	};
 	enum Status
 	{
-		STOPPED,
 		STARTED,
 		LOOKING,
 		FOUND,
 		CATCH,
-		PULL,
-		RELEASE,
 		FINISHED
 	};
 
@@ -68,9 +65,9 @@ private:
 	static inline INPUT inputCatch = { 0 };
 	
 	//used in catchProcess
-	const int scalePosDOWN = 120;
+	const int scalePosDOWN = 140;
 	//used in catchProcess
-	const int scalePosUP = 130;
+	const int scalePosUP = 150;
 
 	//used in initWindow
 	bool init = false;
@@ -82,14 +79,14 @@ private:
 	bool areaSelected = false;
 
 	//for overal logic control
-	Status status = STOPPED;
+	Status status = STARTED;
 
 	
 
 	//reset when fishing cycle end
 	cv::Rect cropRect = cv::Rect();
 	//reset when fishing cycle end
-	cv::Rect scaleRect = cv::Rect(); 
+	cv::Rect storedRect = cv::Rect();
 
 	//used in getImage
 	cv::Mat	img, imgHSV, imgMask;
@@ -99,8 +96,8 @@ private:
 	//c высоты  800-875   ---- клюнуло  209-450
 	//с средней 1500-1700 ---- клюнуло  252-644
 	//c низов   2400-2900 ---- клюнуло  546-975
-	const int inWaterSize = 600;
-	const int inScaleSize = 30;
+	const int inWaterSize = 640;
+	const int inScaleSize = 60;
 	
 	//add new objects here
 	const std::vector<std::vector<int>> objHSV = {
@@ -115,7 +112,7 @@ private:
 		SALAD
 	};
 	std::vector<int> matchingThresholds = {
-		12,
+		10,
 		12
 	};
     
@@ -149,7 +146,7 @@ private:
 	void getMaskColorBased(cv::Mat& imgMask, objType type);
 	void getImage();
 	
-	cv::Mat matchingMethod(matchingEnum type, cv::Rect& storedRect);
+	cv::Mat matchingMethod(matchingEnum type);
 	void catchProcess();
 	void TextureForDebug();
 

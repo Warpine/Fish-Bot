@@ -48,20 +48,13 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 
 void Vision::CaptureFih()
 {   
-	//uses when CATCH for the first time in fishing cycle
-	//and became true when FINISHED
-	static bool firstTimeSleep = true;
+	
 
 	switch (status)
 	{
-	case STOPPED:
-		statusMessage = "stopped";
+	
 
-		status = STARTED;
-
-		break;
-
-	case STARTED: //тут  должно быть закидывание удочки
+	case STARTED: 
 		getDesktopMat();
 		getImage();
 		
@@ -101,10 +94,6 @@ void Vision::CaptureFih()
 	case CATCH:
 		statusMessage = "catching";
 		
-		/*if (firstTimeSleep) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(15));
-			firstTimeSleep = false;
-		}*/
 		getDesktopMat();
 		getImage();
 		if (img.empty()) {
@@ -112,7 +101,7 @@ void Vision::CaptureFih()
 		}
 		catchProcess();
 		
-		std::cout << "boundRect.area = " << boundRect.area() << std::endl; //debug
+		//std::cout << "boundRect.area = " << boundRect.area() << std::endl; //debug
 		
 		if (boundRect.area() < inScaleSize) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
@@ -121,35 +110,20 @@ void Vision::CaptureFih()
 			status = FINISHED;
 		}
 		
-
-		break;
-
-	case PULL:
-		statusMessage = "pull";
-
-		status = FINISHED;
-		break;
-
-	case RELEASE:
-		statusMessage = "Release";
-
-		status = FINISHED;
 		break;
 
 	case FINISHED:
 		statusMessage = "Fihing end";
 		
 		//inputCatch = { 0 };
-		firstTimeSleep = true;
+		//firstTimeSleep = true;
+		storedRect = cv::Rect();
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		status = STARTED;
 		break;
 	default:
 		break;
 	}
-
-
-	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 
 }
@@ -194,11 +168,11 @@ void Vision::stopCapture()
 	if (memoryDeviceContext) DeleteDC(memoryDeviceContext);
 	if (deviceContext)       ReleaseDC(windowDesk, deviceContext);
 	gdiInitialized = false;
-	status = STOPPED;
-	statusMessage = "Not watching";
+	status = STARTED;
+	statusMessage = "stopped";
 	areaSelected = false;
 	cropRect = cv::Rect();
-	scaleRect = cv::Rect();
+	storedRect = cv::Rect();
 }
 
 void Vision::pressKeyMouseLeft(int KeyUpMillisec) {
@@ -318,12 +292,13 @@ void Vision::getMaskColorBased(cv::Mat& imgMask, objType type) {
 
 void Vision::getImage() {
 	
+	static double minVal = 30;
 
 	if (status != CATCH) {
 		img = cropMat();
 	}
 	else {
-		img = matchingMethod(SCALE, scaleRect);
+		img = matchingMethod(SCALE);
 	}
 	
 	if (img.empty()) {
@@ -352,10 +327,11 @@ void Vision::getImage() {
 
 		double area = cv::contourArea(contours[i]);
 
-		if (area < inScaleSize) {
+		if (area < minVal) {
 			continue;
 		}
 		if (area > maxArea) {
+			std::cout << "area = " << area << std::endl;
 			maxArea = area;
 			maxAreaIdx = i;
 		}
@@ -393,8 +369,12 @@ void Vision::getImage() {
 
 @sa  thresholdWithMask, adaptiveThreshold, findContours, compare, min, max
  */
-cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect)
+cv::Mat Vision::matchingMethod(matchingEnum type)
 {
+	//static cv::Rect roi(0, fullScale.rows / 2, fullScale.cols, fullScale.rows - fullScale.rows / 2);
+	//static cv::Mat mask = cv::Mat::ones(fullScale.rows, fullScale.cols, CV_8UC1);
+	int startRow = fullScale.rows * 0.45;
+	cv::Mat cropped = fullScale(cv::Range(startRow, fullScale.rows), cv::Range::all());
 
 	if(!storedRect.empty())
 	{ 
@@ -403,7 +383,7 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect)
 	}
 
 	else {
-		//int match_method = cv::TM_SQDIFF_NORMED;
+		
 		cv::Mat templ4chnl;
 		cv::cvtColor(matchingTempl[type], templ4chnl, cv::COLOR_BGR2BGRA);
 	    
@@ -417,17 +397,17 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect)
 		
 
 		cv::Mat result;
-		int result_cols = fullScale.cols - templ4chnl.cols + 1;
-		int result_rows = fullScale.rows - templ4chnl.rows + 1;
+		int result_cols = cropped.cols - templ4chnl.cols + 1;
+		int result_rows = cropped.rows - templ4chnl.rows + 1;
 
 		result.create(result_rows, result_cols, CV_32FC1);
 
 		
 		try {
-			cv::matchTemplate(fullScale, templ4chnl, result, matchingModes[type]);
+			cv::matchTemplate(cropped, templ4chnl, result, matchingModes[type]);
 		}
 		catch (const cv::Exception& e) {
-			if (fullScale.type() != templ4chnl.type())
+			if (cropped.type() != templ4chnl.type())
 			{
 				statusMessage = "types of image not matching";
 			}
@@ -479,10 +459,12 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect)
 			
 			
 			storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
+			storedRect.y += startRow;
+
 			if (status == CATCH) {
 				storedRect.height -= 24;
-				//storedRect.x += 10; //подбирается индивидуально под скрин
-				storedRect.width -= 20; //подбирается индивидуально под скрин
+				storedRect.x += 10; //подбирается индивидуально под скрин
+				storedRect.width -= (15 + 10); //подбирается индивидуально под скрин
 			}
 			
 			//std::this_thread::sleep_for(std::chrono::months(2));
@@ -544,7 +526,7 @@ void Vision::debugWindow() {
 		ImGui::Image(imguiTexture, ImVec2(config.areaRadius, config.areaRadius));
 	}
 	else {
-		ImGui::Image(imguiTexture, ImVec2(scaleRect.width, scaleRect.height));
+		ImGui::Image(imguiTexture, ImVec2(storedRect.width, storedRect.height));
 	}
 	
 	ImGui::End();
