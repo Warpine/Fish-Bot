@@ -1,7 +1,7 @@
 ﻿#include "Vision.h"
 #include <iostream>
 #include <imgui/imgui.h>
-
+#include<chrono>
 Vision::Vision(Config& config, ID3D11Device* g_pd3dDevice) : config(config), g_pd3dDevice_(g_pd3dDevice) {
 	if (!init) {
 		initWindow();
@@ -29,10 +29,12 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 	if (!areaSelected) {
 		selectAreaWithMouse(fihingState);
 	}
-	//auto clockStart = std::chrono::high_resolution_clock::now();
+	auto clockStart = std::chrono::high_resolution_clock::now();
+
 	while (fihingState.load())
 	{
 		if (shouldExit.load()) { break; }
+
 			CaptureFih();
 			/*auto clockEnd = std::chrono::high_resolution_clock::now();
 			std::chrono::seconds duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - clockStart);
@@ -136,6 +138,8 @@ void Vision::catchProcess() {
 	inputCatch.type = INPUT_MOUSE;
 	inputCatch.mi.dx = 0;
 	inputCatch.mi.dy = 0;
+
+	
 
 	if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize)
 	{
@@ -365,19 +369,12 @@ void Vision::getImage() {
 /** @brief Matches the given template, no mask.
 
 @param type of object see matchingEnum
-@param match_method OpenCV enum for template matching
-@param type thresholding type (see #ThresholdTypes).
-@param storedRect is a rect of area on screen, that matched the template, reset every FINISHED state
 @return  fullScale(storedRect).clone() 
 
-@sa  thresholdWithMask, adaptiveThreshold, findContours, compare, min, max
  */
 cv::Mat Vision::matchingMethod(matchingEnum type)
 {
 	
-	int startRow = fullScale.rows * 0.45;
-	cv::Mat cropped = fullScale(cv::Range(startRow, fullScale.rows), cv::Range::all());
-
 	if(!storedRect.empty())
 	{ 
 		return fullScale(storedRect).clone();
@@ -386,6 +383,14 @@ cv::Mat Vision::matchingMethod(matchingEnum type)
 
 	else {
 		
+		int startRow;
+		cv::Mat cropped;
+		//заготовка под новые иконки
+		if (status = CATCH) {
+			startRow = fullScale.rows * 0.45;
+			cropped = fullScale(cv::Range(startRow, fullScale.rows), cv::Range::all());
+		}
+
 		cv::Mat templ4chnl;
 		cv::cvtColor(matchingTempl[type], templ4chnl, cv::COLOR_BGR2BGRA);
 	    
@@ -436,7 +441,7 @@ cv::Mat Vision::matchingMethod(matchingEnum type)
 			
 
 			double thresholdValue = (double)matchingThresholds[type] / 255.0;
-			threshold(result, result, thresholdValue, 1.0, matchingThTypes[type]);
+			threshold(result, result, thresholdValue, 1.0, cv::THRESH_BINARY);
 
 			minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat());
 
@@ -460,13 +465,14 @@ cv::Mat Vision::matchingMethod(matchingEnum type)
 			
 			
 			
-			storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
-			storedRect.y += startRow;
+			;
 
 			if (status == CATCH) {
+				storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
+				storedRect.y += startRow;
 				storedRect.height -= 24;
-				storedRect.x += 10; //подбирается индивидуально под скрин
-				storedRect.width -= (15 + 10); //подбирается индивидуально под скрин
+				//storedRect.x += 10; //подбирается индивидуально под скрин
+				//storedRect.width -= (15 + 10); //подбирается индивидуально под скрин
 			}
 			
 			//std::this_thread::sleep_for(std::chrono::months(2));

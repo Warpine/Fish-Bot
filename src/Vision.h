@@ -109,28 +109,56 @@ private:
 	//template for matching/////////////////////////////////////////////////////////
 	enum matchingEnum {
 		SCALE,
-		SALAD
+		PIE,
+		SALAD,
+		BAIT,
+		LOGS,
+		SLOT,
+		MAINLOGO,
+		BUTTON,
+		BUTTON2,
+		USEBUTTON
 	};
 	std::vector<int> matchingThresholds = {
 		10,
-		12
+		151,
+		249,
+		151,
+		247,
+		200,
+		30,
+		25,
+		240,
+		224
 	};
     
 	const std::vector<cv::Mat> matchingTempl ={   
-		cv::imread("E:/IT/repos/imguiTest/src/scale1.png", cv::IMREAD_COLOR),
-		cv::imread("E:/IT/repos/imguiTest/src/scale.png", cv::IMREAD_COLOR),
+		cv::imread("src/scale.png", cv::IMREAD_COLOR),
+		cv::imread("src/chickenPie.png", cv::IMREAD_COLOR),
+		cv::imread("src/salad.png", cv::IMREAD_COLOR),
+		cv::imread("src/t1bait.png", cv::IMREAD_COLOR),
+		cv::imread("src/logs.png", cv::IMREAD_COLOR),
+		cv::imread("src/slot.png", cv::IMREAD_COLOR),
+		cv::imread("src/mainLogo.png", cv::IMREAD_COLOR),
+		cv::imread("src/enterButton.png", cv::IMREAD_COLOR),
+		cv::imread("src/enterButton2.png", cv::IMREAD_COLOR),
+		cv::imread("src/useButton.png", cv::IMREAD_COLOR)
+
 	};
 
 	const std::vector<cv::TemplateMatchModes> matchingModes = {
 		cv::TM_SQDIFF_NORMED,
-		cv::TM_SQDIFF_NORMED
+		cv::TM_CCOEFF_NORMED,
+		cv::TM_CCORR_NORMED,
+		cv::TM_CCOEFF_NORMED,
+		cv::TM_CCOEFF_NORMED,
+		cv::TM_CCOEFF_NORMED,
+		cv::TM_SQDIFF_NORMED,
+		cv::TM_SQDIFF,
+		cv::TM_CCORR_NORMED,
+		cv::TM_CCOEFF
 	};
-
-	const std::vector<cv::ThresholdTypes> matchingThTypes = {
-		cv::THRESH_BINARY,
-		cv::THRESH_BINARY
-	};
-	//this all related with matchingEnum
+	//all this related with matchingEnum
 	//////////////////////////////////////////////////////////////////////////
 	
 
