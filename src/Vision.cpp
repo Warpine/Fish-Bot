@@ -50,15 +50,15 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 
 void Vision::CaptureFih()
 {   
-	static int counter = 0;
 
 	switch (status)
 	{
 
-	case STARTED: 
-		getDesktopMat();
-		getImage();
+	case STARTED:
+
 		
+		getImage();
+
 		statusMessage = "thrown";
 		pressKeyMouseLeft(config.throwTimeMs);
 		status = LOOKING;
@@ -67,8 +67,9 @@ void Vision::CaptureFih()
 	case LOOKING:
 		statusMessage = "looking for bobber";
 		std::this_thread::sleep_for(std::chrono::milliseconds(650));
-		getDesktopMat();
+		
 		getImage();
+
 		if (boundRect.area() >= inWaterSize) {
 			status = FOUND;
 			break;
@@ -79,8 +80,6 @@ void Vision::CaptureFih()
 	case FOUND:
 		statusMessage = "found and watching";
 	
-		
-		getDesktopMat();
 		getImage();
         
 		if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize) {
@@ -95,16 +94,13 @@ void Vision::CaptureFih()
 	case CATCH:
 		statusMessage = "catching";
 		
-		getDesktopMat();
+		
 		getImage();
-		if (img.empty()) {
-			break;
-		}
 		catchProcess();
 		
 		//std::cout << "boundRect.area = " << boundRect.area() << std::endl; //debug
-		if (boundRect.empty() && counter != 5) {
-			counter++;
+		if (boundRect.empty() && emptyCounter != 5) {
+			emptyCounter++;
 			break;
 		}
 
@@ -112,6 +108,7 @@ void Vision::CaptureFih()
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 			SendInput(1, &inputCatch, sizeof(INPUT));
 
+			emptyCounter = 0;
 			status = FINISHED;
 			break;
 		}
@@ -120,12 +117,38 @@ void Vision::CaptureFih()
 
 	case FINISHED:
 		statusMessage = "Fihing end";
-		
-		counter = 0;
 		storedRect = cv::Rect();
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+		if (config.cycles != NULL) {
+			cyclesCounter++;
+
+			if (cyclesCounter == config.cycles) {
+				statusMessage = "cleaning";
+				cleanInventory();
+				cyclesCounter = 0;
+				storedRect = cv::Rect();
+				itThatPOINT = POINT();
+			}
+		}
+		//тут должны быть 2 условия завязанные на времени
+		
 		status = STARTED;
 		break;
+	case CLEAN:
+
+		
+		break;
+	case WORMS:
+		sendKeyPress(config.inventoryKey);
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		getDesktopMat();
+		useBuff(BAIT);
+		sendKeyPress(config.inventoryKey);
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		SetCursorPos(itThatRemember.x, itThatRemember.y);
+	case FOOD:
+
 	default:
 		break;
 	}
@@ -178,6 +201,8 @@ void Vision::stopCapture()
 	status = STARTED;
 	statusMessage = "stopped";
 	areaSelected = false;
+	itThatRemember = POINT();
+	cyclesCounter = 0;
 	cropRect = cv::Rect();
 	storedRect = cv::Rect();
 }
@@ -195,6 +220,25 @@ void Vision::pressKeyMouseLeft(int KeyUpMillisec) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(KeyUpMillisec));
 	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 	SendInput(1, &input, sizeof(input));
+}
+
+void Vision::sendKeyPress(int keyCode) {
+	INPUT input = { 0 };
+	input.type = INPUT_KEYBOARD;
+	input.ki.wScan = 0;
+	input.ki.time = 0;
+	input.ki.dwExtraInfo = 0;
+
+	// Нажатие клавиши
+	input.ki.wVk = keyCode; // Код клавиши
+	input.ki.dwFlags = 0; // 0 для нажатия клавиши
+	SendInput(1, &input, sizeof(INPUT));
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+	// Отпускание клавиши
+	input.ki.dwFlags = KEYEVENTF_KEYUP;
+	SendInput(1, &input, sizeof(INPUT));
 }
 
 bool Vision::initWindow() {
@@ -250,6 +294,8 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 			GetCursorPos(&cursorPos);
 			ScreenToClient(windowDesk, &cursorPos);
 
+			itThatRemember = cursorPos;
+
 			
 			selectedArea.left = cursorPos.x - config.areaRadius / 2;
 			selectedArea.top = cursorPos.y - config.areaRadius / 2;
@@ -299,6 +345,8 @@ void Vision::getMaskColorBased(cv::Mat& imgMask, objType type) {
 
 void Vision::getImage() {
 	
+	getDesktopMat();
+
 	static double minVal = 30;
 
 	if (status != CATCH) {
@@ -384,8 +432,8 @@ cv::Mat Vision::matchingMethod(matchingEnum type)
 	else {
 		
 		int startRow;
-		cv::Mat cropped;
-		//заготовка под новые иконки
+		cv::Mat cropped = fullScale;
+		
 		if (status = CATCH) {
 			startRow = fullScale.rows * 0.45;
 			cropped = fullScale(cv::Range(startRow, fullScale.rows), cv::Range::all());
@@ -433,7 +481,8 @@ cv::Mat Vision::matchingMethod(matchingEnum type)
 
 			if  (  matchingModes[type] != cv::TM_SQDIFF_NORMED
 				&& matchingModes[type] != cv::TM_CCOEFF_NORMED
-				&& matchingModes[type] != cv::TM_CCORR_NORMED) 
+				&& matchingModes[type] != cv::TM_CCORR_NORMED
+				) 
 			{
 				normalize(result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
 			}
@@ -450,32 +499,38 @@ cv::Mat Vision::matchingMethod(matchingEnum type)
 
 			if (matchingModes[type] == cv::TM_SQDIFF || matchingModes[type] == cv::TM_SQDIFF_NORMED) {
 				if (minLoc == cv::Point()) {
-					std::cout << "MINLOC EMPTY RETRY" << std::endl;
+					std::cout << "MINLOC EMPTY" << std::endl;
+
 					return cv::Mat();
+					
 				}
 				matchLoc = minLoc;
 			}
 			else {
 				if (maxLoc == cv::Point()) {
-					std::cout << "MAXLOC EMPTY RETRY" << std::endl;
-					return cv::Mat();
+					std::cout << "MAXLOC EMPTY" << std::endl;
+
+				    return cv::Mat();
+				
 				}
 				matchLoc = maxLoc;
 			}
 			
 			
 			
-			;
+			
 
 			if (status == CATCH) {
 				storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
 				storedRect.y += startRow;
 				storedRect.height -= 24;
-				//storedRect.x += 10; //подбирается индивидуально под скрин
-				//storedRect.width -= (15 + 10); //подбирается индивидуально под скрин
+				
+			}
+			else { 
+				storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
+				itThatPOINT = POINT(matchLoc.x + templ4chnl.cols / 2, matchLoc.y + templ4chnl.rows / 2);
 			}
 			
-			//std::this_thread::sleep_for(std::chrono::months(2));
 			return fullScale(storedRect).clone();
 			//работает по такому же принципу как кроп мат
 			
@@ -516,6 +571,104 @@ void Vision::TextureForDebug()
 	g_pd3dDevice_->CreateShaderResourceView(texture, nullptr, &textureSRV);
 	
 	texture->Release();
+}
+
+void Vision::cleanInventory()
+{
+	//start
+	sendKeyPress(config.inventoryKey);
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	getDesktopMat();
+	//
+	cv::Mat cleanImage = matchingMethod(LOGS);
+	if (cleanImage.empty()) {
+		statusMessage = "no trash found";
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		return;
+	}
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+	SetCursorPos(itThatPOINT.x, itThatPOINT.y); 
+
+	INPUT input = { 0 };
+
+	input.type = INPUT_MOUSE;
+	input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+	input.mi.dx = 0;
+	input.mi.dy = 0;
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+	SendInput(1, &input, sizeof(input));
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	SetCursorPos(fullScale.cols / 2, fullScale.rows / 2);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+	SendInput(1, &input, sizeof(input));
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+	SetCursorPos(fullScale.cols / 2 - 100, fullScale.rows / 2);
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	pressKeyMouseLeft(10);
+
+	//end
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	sendKeyPress(config.inventoryKey);
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	SetCursorPos(itThatRemember.x, itThatRemember.y);
+	//
+}
+
+void Vision::useBuff(matchingEnum type)
+{
+
+	if (type == SLOT) {
+		cv::Mat slotImage = matchingMethod(type);
+		if (!slotImage.empty()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			statusMessage = "trying to find";
+
+			if (config.usePie) {
+				cv::Mat pieImage = matchingMethod(PIE);
+			}
+			else {
+				cv::Mat pieImage = matchingMethod(SALAD);
+			}
+		}
+		else {
+			sendKeyPress(config.foodKey);
+			return;
+		}
+		
+		
+	}
+	else {
+
+	}
+	/*if (bollteImage.empty()) {
+		statusMessage = "out of stock";
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		return;
+	}*/
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+	SetCursorPos(itThatPOINT.x, itThatPOINT.y);
+
+	INPUT input = { 0 };
+
+	input.type = INPUT_MOUSE;
+	input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+	input.mi.dx = 0;
+	input.mi.dy = 0;
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+	SendInput(1, &input, sizeof(input));
+
+
 }
 
 void Vision::debugWindow() {

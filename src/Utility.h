@@ -114,12 +114,8 @@ private:
 	bool bindsOpen = false;
 	bool settingsOpen = false;
 	
-	/*nt ButtonX = 100;
-	int ButtonY = 36;
-	ImVec2 ButtonVec = ImVec2(ButtonX, ButtonY);*/
-
-	/*ImGuiWindowFlags flazhoks = ImGuiWindowFlags_AlwaysAutoResize |
-		ImGuiWindowFlags_NoResize;*/ //ImGuiWindowFlags_NoCollapse
+	
+	
 public:
 	AppState(Config& cnf, Vision& vision) : config(cnf), vision(vision) {}
 

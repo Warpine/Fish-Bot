@@ -32,7 +32,10 @@ private:
 		LOOKING,
 		FOUND,
 		CATCH,
-		FINISHED
+		FINISHED,
+		CLEAN,
+		WORMS,
+		FOOD
 	};
 
 	//for debug window display
@@ -80,13 +83,15 @@ private:
 
 	//for overal logic control
 	Status status = STARTED;
-
-	
+	int cyclesCounter = 0;
+	int emptyCounter = 0;
+	POINT itThatRemember;
 
 	//reset when fishing cycle end
 	cv::Rect cropRect = cv::Rect();
 	//reset when fishing cycle end
 	cv::Rect storedRect = cv::Rect();
+	POINT itThatPOINT = POINT();
 
 	//used in getImage
 	cv::Mat	img, imgHSV, imgMask;
@@ -99,6 +104,7 @@ private:
 	const int inWaterSize = 640;
 	const int inScaleSize = 60;
 	
+
 	//add new objects here
 	const std::vector<std::vector<int>> objHSV = {
 		//hmin, hmax, smin, smax, vmin, vmax
@@ -117,7 +123,8 @@ private:
 		MAINLOGO,
 		BUTTON,
 		BUTTON2,
-		USEBUTTON
+		USEBUTTON,
+		YESBUTTON
 	};
 	std::vector<int> matchingThresholds = {
 		10,
@@ -129,7 +136,8 @@ private:
 		30,
 		25,
 		240,
-		224
+		224,
+		221
 	};
     
 	const std::vector<cv::Mat> matchingTempl ={   
@@ -142,7 +150,8 @@ private:
 		cv::imread("src/mainLogo.png", cv::IMREAD_COLOR),
 		cv::imread("src/enterButton.png", cv::IMREAD_COLOR),
 		cv::imread("src/enterButton2.png", cv::IMREAD_COLOR),
-		cv::imread("src/useButton.png", cv::IMREAD_COLOR)
+		cv::imread("src/useButton.png", cv::IMREAD_COLOR),
+		cv::imread("src/yesButton.png", cv::IMREAD_COLOR)
 
 	};
 
@@ -156,7 +165,8 @@ private:
 		cv::TM_SQDIFF_NORMED,
 		cv::TM_SQDIFF,
 		cv::TM_CCORR_NORMED,
-		cv::TM_CCOEFF
+		cv::TM_CCOEFF,
+		cv::TM_CCOEFF_NORMED
 	};
 	//all this related with matchingEnum
 	//////////////////////////////////////////////////////////////////////////
@@ -165,7 +175,7 @@ private:
 	void CaptureFih();
 	void stopCapture();
 	void pressKeyMouseLeft(int KeyUpMillisec);
-
+	void sendKeyPress(int keyCode);
 	
 	bool initWindow();
 	void getDesktopMat();
@@ -177,6 +187,8 @@ private:
 	cv::Mat matchingMethod(matchingEnum type);
 	void catchProcess();
 	void TextureForDebug();
+	void cleanInventory();
+	void useBuff(matchingEnum type);
 
 	
 public:
