@@ -120,6 +120,14 @@ public:
 	AppState(Config& cnf, Vision& vision) : config(cnf), vision(vision) {}
 
 	void manage() {
+		
+		if (!fihing.load()) {
+			showMainWin = true;
+		}
+		else {
+			showMainWin = false;
+		}
+
 		if (bindsOpen && showMainWin) {
 			config.window(bindsOpen);
 		}

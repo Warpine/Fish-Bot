@@ -88,7 +88,7 @@ void Vision::CaptureFih()
 		
 
 		
-		if (boundRect.area() > inWaterSize) {
+		if (boundRect.area() > inWaterSizeMin) {
 			status = FOUND;
 			
 			break;
@@ -102,7 +102,7 @@ void Vision::CaptureFih()
 		getDesktopMat();
 		getImage();
         
-		if (boundRect.area() < inWaterSize) {
+		if (boundRect.area() < inWaterSizeMin) {
 			status = CATCH;
 			if (checkRestart()) { break; }
 			pressKeyMouseLeft(10);
@@ -118,22 +118,25 @@ void Vision::CaptureFih()
 		//std::cout << "status = CATCH" << std::endl;
 		getDesktopMat();
 		getImage();
-		catchProcess();
+		//catchProcess();
 		
 		//std::cout << "boundRect.area = " << boundRect.area() << std::endl; //debug
-		if (boundRect.empty() && emptyCounter != 5) {
-			emptyCounter++;
-			break;
-		}
-
 		if (boundRect.empty()) {
-			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-			SendInput(1, &inputCatch, sizeof(INPUT));
+			emptyCounter++;
 
-			emptyCounter = 0;
-			status = FINISHED;
-			
+			if (emptyCounter >= 5) {
+				inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+				SendInput(1, &inputCatch, sizeof(INPUT));
+
+				emptyCounter = 0;
+				status = STARTED;
+				break;
+			}
 		}
+		else {
+			catchProcess();
+		}
+		
 		
 		break;
 
@@ -147,12 +150,12 @@ void Vision::CaptureFih()
 
 		if (checkRestart()) { break; } 
 		if (config.cycles != NULL) {
-			cyclesCounter++;
+			cleanCounter++;
 
-			if (cyclesCounter == config.cycles) {
+			if (cleanCounter == config.cycles) {
 				statusMessage = "cleaning";
 				cleanInventory();
-				cyclesCounter = 0;
+				cleanCounter = 0;
 				
 			}
 		}
@@ -187,8 +190,10 @@ void Vision::CaptureFih()
 		clockStart = std::chrono::high_resolution_clock::now();
 
 		RestartingP1();
+		clockStart = std::chrono::high_resolution_clock::now();
 		if (okWindowCheck()) { break; }
 		RestartingP2();
+		clockStart = std::chrono::high_resolution_clock::now();
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		SetCursorPos(itThatRemember.x, itThatRemember.y);
@@ -203,14 +208,15 @@ void Vision::CaptureFih()
 
 void Vision::catchProcess() { 
 	
-	inputCatch.type = INPUT_MOUSE;
-	inputCatch.mi.dx = 0;
-	inputCatch.mi.dy = 0;
+	
 
 	
 
-	if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize)
+	if (boundRect.area() <= inWaterSizeMin && boundRect.area() >= inScaleSize)
 	{
+		inputCatch.type = INPUT_MOUSE;
+		inputCatch.mi.dx = 0;
+		inputCatch.mi.dy = 0;
 		cv::Point center(
 			boundRect.x + boundRect.width / 2,
 			boundRect.y + boundRect.height / 2
@@ -228,8 +234,13 @@ void Vision::catchProcess() {
 			std::cout << "Mouse UP" << std::endl;
 		}
 
-		
-		
+	}
+	else {
+		if (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP) {
+			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+			SendInput(1, &inputCatch, sizeof(INPUT));
+			std::cout << "Mouse UP" << std::endl;
+		}
 	}
 	
 	}
@@ -248,7 +259,7 @@ void Vision::stopCapture()
 	buffsActive = false;
 	gdiInitialized = false;
 	itThatRemember = POINT();
-	cyclesCounter = 0;
+	cleanCounter = 0;
 	cropRect = cv::Rect();
 	scaleRect = cv::Rect();
 }
@@ -444,13 +455,13 @@ void Vision::getImage() {
 		//std::cout << boundRect.area() << std::endl;
 		
 		if (status != CATCH) {
-			if (boundRect.area() >= inWaterSize) {
+			if (boundRect.area() >= inWaterSizeMin && boundRect.area() <= inWaterSizeMax) {
 				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
 			}
 
 		}
 		else {
-			if (boundRect.area() < inWaterSize && boundRect.area() >= inScaleSize) {
+			if (boundRect.area() < inWaterSizeMin && boundRect.area() >= inScaleSize) {
 				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
 			}
 		}
@@ -854,8 +865,8 @@ void Vision::RestartingP1() {
 		cv::Rect noticeRect = cv::Rect();
 		cv::Mat noticeMat = matchingMethod(SERVERNOTICE, noticeRect);
 		if (!noticeMat.empty()) {
-			statusMessage = "notice found, sleeping for 5 minutes";
-			std::this_thread::sleep_for(std::chrono::minutes(5));
+			statusMessage = "notice found, sleeping for 4 minutes";
+			std::this_thread::sleep_for(std::chrono::minutes(4));
 		}
 		cv::Rect loginRect = cv::Rect();
 		cv::Mat loginMat = matchingMethod(LOGINBUTTON, loginRect);
@@ -863,7 +874,7 @@ void Vision::RestartingP1() {
 			SetCursorPos(itThatPOINT.x, itThatPOINT.y);
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 			pressKeyMouseLeft(12);
-			std::this_thread::sleep_for(std::chrono::seconds(30)); //after login button clicked
+			std::this_thread::sleep_for(std::chrono::seconds(20)); //after login button clicked
 		}
 
 	}
@@ -875,8 +886,8 @@ bool Vision::okWindowCheck()
 	cv::Mat okMat = matchingMethod(OKBUTTON, okRect);
 	if (!okMat.empty()) {
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
-		pressKeyMouseLeft(14);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		pressKeyMouseLeft(12);
 		return true;
 	}
 	else {
@@ -889,9 +900,10 @@ void Vision::RestartingP2()
 	cv::Rect enterWorldRect = cv::Rect();
 	cv::Mat enterWorldMat = matchingMethod(ENTERWORLDBUTTON, enterWorldRect);
 	if (!enterWorldMat.empty()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
-		pressKeyMouseLeft(14);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		pressKeyMouseLeft(12);
 		std::this_thread::sleep_for(std::chrono::seconds(10));
 		INPUT mouseWheelUP = { 0 };
 		mouseWheelUP.type = INPUT_MOUSE;
@@ -905,4 +917,3 @@ void Vision::RestartingP2()
 
 	}
 }
-

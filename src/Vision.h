@@ -82,7 +82,7 @@ private:
 
 	//for overal logic control
 	Status status = STARTED;
-	int cyclesCounter = 0;
+	int cleanCounter = 0;
 	int emptyCounter = 0;
 	POINT itThatRemember;
 
@@ -100,8 +100,10 @@ private:
 	//c высоты  800-875   ---- клюнуло  209-450
 	//с средней 1500-1700 ---- клюнуло  252-644
 	//c низов   2400-2900 ---- клюнуло  546-975
-	const int inWaterSize = 640;
+	const int inWaterSizeMin = 640;
 	const int inScaleSize = 60;
+	//used only in debug window
+	const int inWaterSizeMax = 2900; 
 	
 	bool buffsActive = false;
 	std::chrono::steady_clock::time_point timeFoodStart;
@@ -139,7 +141,7 @@ private:
 		200,
 		30,
 		25,
-		240,
+		131,
 		224,
 		221,
 		221,
@@ -172,7 +174,7 @@ private:
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_SQDIFF_NORMED,
 		cv::TM_SQDIFF,
-		cv::TM_CCORR_NORMED,
+		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF,
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED,
