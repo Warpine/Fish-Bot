@@ -12,6 +12,7 @@
  //mb need to create globalVar header
 const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+//std::chrono::steady_clock::time_point clockStart;
 
 class Vision
 {
@@ -33,9 +34,7 @@ private:
 		FOUND,
 		CATCH,
 		FINISHED,
-		CLEAN,
-		WORMS,
-		FOOD
+		SERVER_RESTART
 	};
 
 	//for debug window display
@@ -79,7 +78,7 @@ private:
 
 	//used in selectAreaWithMouse
 	::RECT selectedArea = { 0 };
-	bool areaSelected = false;
+	bool isAreaSelected = false;
 
 	//for overal logic control
 	Status status = STARTED;
@@ -90,7 +89,7 @@ private:
 	//reset when fishing cycle end
 	cv::Rect cropRect = cv::Rect();
 	//reset when fishing cycle end
-	cv::Rect storedRect = cv::Rect();
+	cv::Rect scaleRect = cv::Rect();
 	POINT itThatPOINT = POINT();
 
 	//used in getImage
@@ -104,7 +103,10 @@ private:
 	const int inWaterSize = 640;
 	const int inScaleSize = 60;
 	
-
+	bool buffsActive = false;
+	std::chrono::steady_clock::time_point timeFoodStart;
+	std::chrono::steady_clock::time_point timeBaitStart;
+	//std::chrono::steady_clock::time_point timeBeforeErrorStart;
 	//add new objects here
 	const std::vector<std::vector<int>> objHSV = {
 		//hmin, hmax, smin, smax, vmin, vmax
@@ -115,16 +117,18 @@ private:
 	//template for matching/////////////////////////////////////////////////////////
 	enum matchingEnum {
 		SCALE,
-		PIE,
-		SALAD,
+		PIE, //dont use directly, use SLOT instead
+		SALAD,//dont use directly, use SLOT instead
 		BAIT,
 		LOGS,
 		SLOT,
 		MAINLOGO,
-		BUTTON,
-		BUTTON2,
+		LOGINBUTTON,
+		ENTERWORLDBUTTON,
 		USEBUTTON,
-		YESBUTTON
+		YESBUTTON,
+		SERVERNOTICE,
+		OKBUTTON
 	};
 	std::vector<int> matchingThresholds = {
 		10,
@@ -137,10 +141,12 @@ private:
 		25,
 		240,
 		224,
+		221,
+		221,
 		221
 	};
     
-	const std::vector<cv::Mat> matchingTempl ={   
+	const std::vector<cv::Mat> matchingTempl = {
 		cv::imread("src/scale.png", cv::IMREAD_COLOR),
 		cv::imread("src/chickenPie.png", cv::IMREAD_COLOR),
 		cv::imread("src/salad.png", cv::IMREAD_COLOR),
@@ -151,7 +157,9 @@ private:
 		cv::imread("src/enterButton.png", cv::IMREAD_COLOR),
 		cv::imread("src/enterButton2.png", cv::IMREAD_COLOR),
 		cv::imread("src/useButton.png", cv::IMREAD_COLOR),
-		cv::imread("src/yesButton.png", cv::IMREAD_COLOR)
+		cv::imread("src/yesButton.png", cv::IMREAD_COLOR),
+		cv::imread("src/serverNotice.png", cv::IMREAD_COLOR),
+		cv::imread("src/okButton.png", cv::IMREAD_COLOR)
 
 	};
 
@@ -166,6 +174,8 @@ private:
 		cv::TM_SQDIFF,
 		cv::TM_CCORR_NORMED,
 		cv::TM_CCOEFF,
+		cv::TM_CCOEFF_NORMED,
+		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED
 	};
 	//all this related with matchingEnum
@@ -184,16 +194,24 @@ private:
 	void getMaskColorBased(cv::Mat& imgMask, objType type);
 	void getImage();
 	
-	cv::Mat matchingMethod(matchingEnum type);
+	cv::Mat matchingMethod(matchingEnum type, cv::Rect& storedRect);
 	void catchProcess();
 	void TextureForDebug();
 	void cleanInventory();
 	void useBuff(matchingEnum type);
-
-	
+	bool checkRestart();
+	//it was 1 function, but its not work in case
+	void RestartingP1();
+	//it was 1 function, but its not work in case
+	bool okWindowCheck();
+	//it was 1 function, but its not work in case
+	void RestartingP2();
 public:
+	bool getSelectAreaState();
 	void debugWindow();
 
+	int duration;
+	std::chrono::steady_clock::time_point clockStart;
 	std::atomic<time_t> startTime;
 	
 	void startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit);

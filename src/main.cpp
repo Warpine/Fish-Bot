@@ -11,9 +11,9 @@
 #include<imgui/imgui.h>
 #include<imgui/imgui_impl_dx11.h>
 #include<imgui/imgui_impl_win32.h>
+#include<chrono>
 
-
-#include"Vision.h" //Utility is already included in Vision.h
+#include"Vision.h" 
 #include"Utility.h"
 
 //debug
@@ -180,7 +180,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 
 
 		if (state.fihing.load()) {
-
+			
 			if (!state.fishingThread.joinable()) {
 				state.fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing), std::ref(state.shouldExit));
 			}
@@ -188,12 +188,21 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			if (GetAsyncKeyState(config.stopFihKey) & 0x8000) {
 				state.fihing = false;
 			}
-			
+
+			if (vizu.getSelectAreaState()) {
+				auto clockEnd = std::chrono::high_resolution_clock::now();
+				vizu.duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - vizu.clockStart).count(); 
+				if (vizu.duration >= 360) {
+					state.fihing = false;
+				}
+			}
+
 		}
 		else {
 			if (state.fishingThread.joinable()) {
 				state.fishingThread.join();
 			}
+			
 		}
 		
 		
