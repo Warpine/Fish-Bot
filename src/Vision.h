@@ -9,10 +9,12 @@
 
 #include"Config.h"
 
+
+
  //mb need to create globalVar header
 const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-//std::chrono::steady_clock::time_point clockStart;
+
 
 class Vision
 {
@@ -69,7 +71,7 @@ private:
 	//used in catchProcess
 	const int scalePosDOWN = 140;
 	//used in catchProcess
-	const int scalePosUP = 150;
+	const int scalePosUP = 155;
 
 	//used in initWindow
 	bool init = false;
@@ -100,7 +102,7 @@ private:
 	//c высоты  800-875   ---- клюнуло  209-450
 	//с средней 1500-1700 ---- клюнуло  252-644
 	//c низов   2400-2900 ---- клюнуло  546-975
-	const int inWaterSizeMin = 640;
+	const int inWaterSizeMin = 680;
 	const int inScaleSize = 60;
 	//used only in debug window
 	const int inWaterSizeMax = 2900; 
@@ -124,13 +126,13 @@ private:
 		BAIT,
 		LOGS,
 		SLOT,
-		MAINLOGO,
-		LOGINBUTTON,
-		ENTERWORLDBUTTON,
-		USEBUTTON,
-		YESBUTTON,
-		SERVERNOTICE,
-		OKBUTTON
+		MAINLOGO, //restart check
+		LOGINBUTTON, //restart check
+		ENTERWORLDBUTTON, //restart check
+		USEBUTTON, //use bait instead
+		YESBUTTON, //clean inventory
+		SERVERNOTICE, // restart check
+		OKBUTTON, //restart check
 	};
 	std::vector<int> matchingThresholds = {
 		10,
@@ -145,7 +147,7 @@ private:
 		224,
 		221,
 		221,
-		221
+		221,
 	};
     
 	const std::vector<cv::Mat> matchingTempl = {
@@ -208,16 +210,21 @@ private:
 	bool okWindowCheck();
 	//it was 1 function, but its not work in case
 	void RestartingP2();
+
+	
 public:
 	bool getSelectAreaState();
 	void debugWindow();
+	void init_g_pd3dDevice_(ID3D11Device* g_pd3dDevicee) {
+		g_pd3dDevice_ = g_pd3dDevicee;
+	}
 
 	int duration;
 	std::chrono::steady_clock::time_point clockStart;
 	std::atomic<time_t> startTime;
 	
 	void startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit);
-	Vision(Config& config, ID3D11Device* g_pd3dDevice);
+	Vision(Config& config);
 	~Vision();
 	
 };

@@ -3,94 +3,9 @@
 
 #include"Config.h"
 #include"Vision.h"
+#include<keyauth/skStr.h>
 
 
-//class Config {
-//private:
-//	const char* filename = "fih_Settings.ini";
-//	CSimpleIniA ini;
-//	bool fihButton = false;
-//	bool stopButton = false;
-//	bool inventoryButton = false;
-//public:
-//	//bool firstLaunch = true;
-//	int areaRadius;
-//	int fihKey;
-//	int stopFihKey;
-//	int inventoryKey;
-//	void saveConfig() {
-//		
-//		
-//		ini.SetLongValue("Keys", "fihKey", fihKey);
-//		ini.SetLongValue("Keys", "stopFihKey", stopFihKey);
-//		ini.SetLongValue("Keys", "inventoryKey", inventoryKey);
-//		ini.SetLongValue("Values", "areaRadius", areaRadius);
-//		SI_Error rc = ini.SaveFile(filename);
-//	}
-//	
-//	void loadConfig() { 
-//		SI_Error rc = ini.LoadFile(filename);
-//		if (rc < 0) {
-//			createDefaultCnf();
-//			ini.LoadFile(filename);
-//		}
-//
-//		areaRadius = ini.GetLongValue("Values", "areaRadius");
-//		fihKey = ini.GetLongValue("Keys", "fihKey");
-//		stopFihKey = ini.GetLongValue("Keys", "stopFihKey");
-//		inventoryKey = ini.GetLongValue("Keys", "inventoryKey");
-//	}
-//	
-//	
-//
-//	void window(bool& confOpen) {
-//
-//		ImGui::Begin("Configuration", &confOpen);
-//
-//		ImGui::Text("Start Fishing"); ImGui::SameLine(); Hotkey(&fihKey, fihButton);
-//		
-//		ImGui::Text("Stop Fishing"); ImGui::SameLine(); Hotkey(&stopFihKey, stopButton);
-//		
-//		ImGui::Text("Inventory "); ImGui::SameLine(); Hotkey(&inventoryKey, inventoryButton);
-//
-//		ImGui::End();
-//	}
-//
-//private:
-//	void createDefaultCnf() {
-//		areaRadius = 200;
-//		fihKey = VK_NUMPAD5;
-//		stopFihKey = VK_NUMPAD0;
-//		inventoryKey = 'I';
-//
-//		saveConfig();
-//	}
-//	void Hotkey(int* k, bool& button, const ImVec2& size_arg = ImVec2(0, 0))
-//	{
-//		ImGui::PushID("...");
-//
-//
-//		if (!button) {
-//			if (ImGui::Button(KeyNames[*k], size_arg))
-//				button = true;
-//		}
-//		else
-//		{
-//			ImGui::Button("...", size_arg);
-//
-//			for (auto& Key : KeyCodes)
-//			{
-//				if (GetAsyncKeyState(Key) & 0x8000)
-//				{
-//					*k = Key;
-//					button = false;
-//					break;
-//				}
-//			}
-//		}
-//		ImGui::PopID();
-//	}
-//};
 
 
 struct AppState {
@@ -106,19 +21,28 @@ private:
 	Vision& vision;
 	Config& config;
 
-	
-	//bool showAnotherWindow = false;
+	const std::string compilation_date = (std::string)skCrypt(__DATE__);
+	const std::string compilation_time = (std::string)skCrypt(__TIME__);
+	std::string windowTitle = skCrypt("FihBot 1.0 - Built at:  ").decrypt() + compilation_date + " " + compilation_time;
+	std::string guidelineRus;
+	std::string guidelineEng;
+	std::string author2 = skCrypt("Made by BlevotoDevotion").decrypt();
+
 	bool showMainWin = true;
 	bool showHint = true;
 	bool debug = false;
 	bool bindsOpen = false;
 	bool settingsOpen = false;
-	
+	bool guideOpen = false;
+	bool guideEng = true;
 	
 	
 public:
-	AppState(Config& cnf, Vision& vision) : config(cnf), vision(vision) {}
-
+	AppState(Config& cnf, Vision& vision) : config(cnf), vision(vision) {
+		guidelineEng = readFileToString("src/eng.txt");
+		guidelineRus = readFileToString("src/rus.txt");
+	}
+	
 	void manage() {
 		
 		if (!fihing.load()) {
@@ -135,6 +59,9 @@ public:
 			config.settingsWindow(settingsOpen);
 		}
 
+		if (guideOpen && showMainWin)
+			GuideWindow();
+
 		if (showMainWin)
 			ShowMainWindow();
 
@@ -145,50 +72,73 @@ public:
 		
 		
 	}
+	
 private:
 	void ShowMainWindow()
 	{
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
-		ImGui::Begin("FihBot v0.0.0.0", 0, config.flazhoks);
+		//ImGuiIO& io = ImGui::GetIO(); (void)io;
+		ImGui::Begin(windowTitle.c_str(), 0, config.flazhoks);
 		
-		if (ImGui::Button("Start", ImVec2(config.ButtonX, config.ButtonY*2)))
+		if (ImGui::Button("Guide", config.standartButton)) {
+
+			guideOpen = !guideOpen;
+
+		}
+		
+		ImGui::SameLine(config.ButtonX*3);
+		if (ImGui::Button("Keybinds", config.standartButton)) {
+
+			bindsOpen = !bindsOpen;
+		}
+		if (ImGui::Button("Start", ImVec2(config.ButtonX, config.ButtonY * 2)))
 		{
 			fihing.store(true);
 		}
-		ImGui::SameLine(config.ButtonX*3);
-
-
-
+		ImGui::SameLine(config.ButtonX * 3);
 		ImGui::BeginGroup();
-		if (ImGui::Button("Binds", config.standartButton)) {
-
-			if (!bindsOpen) { bindsOpen = true; }
-
-			else { bindsOpen = false; }
-
-		}
 		
 		if (ImGui::Button("Settings", config.standartButton)) {
 
-			if (!settingsOpen) { settingsOpen = true; }
-
-			else { settingsOpen = false; }
+			settingsOpen = !settingsOpen;
 		}
 		if (ImGui::Button("Close", config.standartButton))
 			shouldExit = true;
 		ImGui::EndGroup();
 		
-
+		
 		
 
 		
 		ImGui::Checkbox("debug", &debug);
-
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
+		ImGui::SameLine(config.ButtonX * 2);
+		ImGui::Text(author2.c_str());
+		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
 		ImGui::End();
 	}
+	void GuideWindow(){
+		ImGui::Begin("Guide", NULL, config.flazhoks);
 
-	
+		if (guideEng) {
+			ImGui::Text(guidelineEng.c_str());
+		}
+		else {
+			ImGui::Text(guidelineRus.c_str());
+		}
+
+		if (ImGui::RadioButton("Eng", guideEng)) {
+			guideEng = true;
+		}
+		if (ImGui::RadioButton("Ru", !guideEng)) {
+			guideEng = false;
+		}
+		ImGui::End();
+	}
+	std::string readFileToString(const std::string& path) {
+		std::ifstream file(path);
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		return buffer.str(); 
+	}
 
 };
 

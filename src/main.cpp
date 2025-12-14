@@ -1,3 +1,4 @@
+#define IDI_APP_ICON 102
 #include<opencv2/imgcodecs.hpp>
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
@@ -7,61 +8,52 @@
 #include<d3d11.h>
 #include <tchar.h>
 #include<thread>
+#include<chrono>
 
 #include<imgui/imgui.h>
 #include<imgui/imgui_impl_dx11.h>
 #include<imgui/imgui_impl_win32.h>
-#include<chrono>
 
-#include"Vision.h" 
-#include"Utility.h"
+
+#include"Login.h"
 
 //debug
-#include<iostream>
-#include <fstream>
-#include <io.h>
-#include <fcntl.h>
-#include <stdio.h>
+//#include<iostream>
+//#include <fstream>
+//#include <io.h>
+//#include <fcntl.h>
+//#include <stdio.h>
 //debug
-
-//mb need to create globalVar header
-static ID3D11Device*             g_pd3dDevice = nullptr;
-static ID3D11DeviceContext*      g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain*           g_pSwapChain = nullptr;
-static bool                      g_SwapChainOccluded = false;
-static UINT                      g_ResizeWidth = 0, g_ResizeHeight = 0;
-static ID3D11RenderTargetView*   g_mainRenderTargetView = nullptr;
-
 
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
-void CreateConsole()
-{
-	AllocConsole();
-
-	// Перенаправление стандартного вывода (std::cout)
-	HANDLE stdHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-	int hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
-	FILE* fp = _fdopen(hConHandle, "w");
-	freopen_s(&fp, "CONOUT$", "w", stdout);
-
-	// Перенаправление стандартного ввода (std::cin)
-	stdHandle = GetStdHandle(STD_INPUT_HANDLE);
-	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
-	fp = _fdopen(hConHandle, "r");
-	freopen_s(&fp, "CONIN$", "r", stdin);
-
-	// Перенаправление стандартного ошибок (std::cerr)
-	stdHandle = GetStdHandle(STD_ERROR_HANDLE);
-	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
-	fp = _fdopen(hConHandle, "w");
-	freopen_s(&fp, "CONOUT$", "w", stderr);
-
-	// Очищаем буферы, чтобы все сразу попадало в консоль
-	std::ios::sync_with_stdio();
-}
+//void CreateConsole()
+//{
+//	AllocConsole();
+//
+//	// Перенаправление стандартного вывода (std::cout)
+//	HANDLE stdHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+//	int hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+//	FILE* fp = _fdopen(hConHandle, "w");
+//	freopen_s(&fp, "CONOUT$", "w", stdout);
+//
+//	// Перенаправление стандартного ввода (std::cin)
+//	stdHandle = GetStdHandle(STD_INPUT_HANDLE);
+//	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+//	fp = _fdopen(hConHandle, "r");
+//	freopen_s(&fp, "CONIN$", "r", stdin);
+//
+//	// Перенаправление стандартного ошибок (std::cerr)
+//	stdHandle = GetStdHandle(STD_ERROR_HANDLE);
+//	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+//	fp = _fdopen(hConHandle, "w");
+//	freopen_s(&fp, "CONOUT$", "w", stderr);
+//
+//	// Очищаем буферы, чтобы все сразу попадало в консоль
+//	std::ios::sync_with_stdio();
+//}
 
 
 
@@ -70,24 +62,30 @@ ImGuiStyle SetupImGuiStyle();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 
-
+std::thread run;
+// do NOT remove checkAuthenticated(), it MUST stay for security reasons
+std::thread check; // do NOT remove this function either.
 
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
-	//statements, windows, etc
-	
-	CreateConsole();
-	std::cout << "bydlo" << std::endl;
 	
 	
+	//CreateConsole();
+	//std::cout << "test" << std::endl;
+	
+	
+	config.loadConfig();
 
 	//window
-	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Blackmagic Design", nullptr };
+	//HICON hIcon = LoadIconWithScaleDown(NULL, L"src/fih.png", IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+	HICON hIcon = (HICON)LoadImage(NULL, L"src/fih.ico", IMAGE_ICON, 256, 256, LR_LOADFROMFILE);
+	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), hIcon, nullptr, nullptr, nullptr, L"Blackmagic Design", hIcon };
 	::RegisterClassExW(&wc);
-	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST |  WS_EX_LAYERED, wc.lpszClassName, L"DaVinci Resolve", WS_POPUP, 0, 0, screenWidth, screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
+	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST |  WS_EX_LAYERED, wc.lpszClassName, L"ImJustAfih", WS_POPUP, 0, 0, screenWidth, screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
+	
 
 	//SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_ALPHA);
 	SetLayeredWindowAttributes(hwnd, 0, RGB(0, 0, 0), LWA_COLORKEY);
@@ -107,11 +105,12 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	io.Fonts->AddFontFromFileTTF("E:/IT/repos/imguiTest/external/fonts/Comic Sans MS.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
+	ImFont *idk = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Arial.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
+	io.FontDefault = idk;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
+	
 	//style and scaling
 	ImGuiStyle style;
 	ImGui::StyleColorsDark();
@@ -132,11 +131,20 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	ImGui_ImplWin32_Init(hwnd);
 	ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-	Config config;
-	config.loadConfig();
-	Vision vizu(config, g_pd3dDevice);
-	AppState state(config, vizu);
-	
+
+	vizu.init_g_pd3dDevice_(g_pd3dDevice);
+
+	keyAuthInit();
+	isLogged = keySucces();
+
+	if (!run.joinable()) {
+		run = std::thread(checkAuthenticated, ownerid);
+		// do NOT remove checkAuthenticated(), it MUST stay for security reasons
+
+	}
+	if (!check.joinable()) {
+		check = std::thread(sessionStatus); // do NOT remove this function either.
+	}
 
 	//main loop
 	while (!state.shouldExit.load())
@@ -176,35 +184,42 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		ImGui::NewFrame();
 
 		
-		state.manage();
 
-
-		if (state.fihing.load()) {
+		if (isLogged.load()) {
 			
-			if (!state.fishingThread.joinable()) {
+		    state.manage();
+
+
+		   if (state.fihing.load()) {
+
+			  if (!state.fishingThread.joinable()) {
 				state.fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing), std::ref(state.shouldExit));
-			}
+			  }
 
-			if (GetAsyncKeyState(config.stopFihKey) & 0x8000) {
+			  if (GetAsyncKeyState(config.stopFihKey) & 0x8000) {
 				state.fihing = false;
-			}
+			  }
 
-			if (vizu.getSelectAreaState()) {
+			  if (vizu.getSelectAreaState()) {
 				auto clockEnd = std::chrono::high_resolution_clock::now();
-				vizu.duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - vizu.clockStart).count(); 
+				vizu.duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - vizu.clockStart).count();
 				if (vizu.duration >= 360) {
 					state.fihing = false;
 				}
-			}
+			  }
 
-		}
-		else {
-			if (state.fishingThread.joinable()) {
+		   }
+		   else {
+			  if (state.fishingThread.joinable()) {
 				state.fishingThread.join();
-			}
+			  }
+
+		   }
+	    }
+		else {
+			AuthorizationWindow();
 			
 		}
-		
 		
 			
 			//rendering
@@ -227,11 +242,18 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			HRESULT hr = g_pSwapChain->Present(1, 0);
 			g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 		}
+		isLogged = false;
 	config.saveConfig();
 	if (state.fishingThread.joinable()) {
 		state.fishingThread.join();
 	}
-	//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	if (run.joinable()) {
+		run.detach();
+	}
+	if (check.joinable()) {
+		check.detach();
+	}
+	
 
 		// Cleanup
 		ImGui_ImplDX11_Shutdown();
@@ -244,6 +266,12 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 
 		return 0;
 	};
+
+
+
+	
+
+
 
 bool CreateDeviceD3D(HWND hWnd)
 {
@@ -301,65 +329,9 @@ void CleanupRenderTarget()
 		g_mainRenderTargetView = nullptr;
 	}
 }
-//
-//void ShowMainWindow()
-//{
-//	ImGuiIO& io = ImGui::GetIO(); (void)io;
-//	ImGui::Begin("FihBot v0.0.0.0", 0, state.flazhoks);
-//
-//	if (ImGui::BeginTable("split", 3))
-//	{
-//		ImGui::TableNextColumn(); ImGui::Checkbox("demo window", &state.showDemoWindow);
-//		ImGui::TableNextColumn(); ImGui::Checkbox("debug,", &state.debug);
-//
-//		ImGui::EndTable();
-//	}
-//	
-//	if (ImGui::Button("config")) {
-//		state.confOpen = true;
-//	}
-//
-//	ImGui::SliderInt("areaRadius", &cnf.areaRadius, 200, 250);
-//	if (ImGui::Button("Start"))
-//	{
-//		state.fihing.store(true);
-//	}
-//	if (ImGui::Button("Stop"))
-//	{
-//		state.fihing.store(false);
-//	}
-//
-//	if (ImGui::Button("close app"))
-//		state.shouldExit = true;
-//
-//	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
-//	ImGui::End();
-//}
-//
-//void configWindow() {
-//	ImGui::Begin("Configuration", &state.confOpen);
-//	ImGui::Text("Start Fishing"); ImGui::SameLine();
-//	char fihKeyname[64];
-//	char stopFihKeyname[64];
-//	GetKeyNameTextA(cnf.fihKey, fihKeyname, sizeof(fihKeyname));
-//	GetKeyNameTextA(cnf.stopFih, stopFihKeyname, sizeof(stopFihKeyname));
-//	if (ImGui::Button(fihKeyname)) {
-//
-//	}
-//	ImGui::Text("Stop Fishing"); ImGui::SameLine();
-//	if (ImGui::Button(stopFihKeyname)) { //реализации пока нет
-//
-//	}
-//	ImGui::End();
-//}
-//
-//void debugWindow(std::string statusMessage)
-//{
-//	ImGui::SetNextWindowSize(ImVec2(200, 200));
-//	ImGui::Begin("debug");
-//	ImGui::Text(statusMessage.c_str());
-//	ImGui::End();
-//}
+
+
+
 
 
 // Forward declare message handler from imgui_impl_win32.cpp

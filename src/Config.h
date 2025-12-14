@@ -11,15 +11,18 @@ private:
 	bool stopButton = false;
 	bool inventoryButton = false; 
 	bool foodButton = false;
-
-public:
 	
+public:
+	Config() {
+		ini.SetUnicode();
+	}
 	int ButtonX = 100;
 	int ButtonY = 36;
 	ImVec2 standartButton = ImVec2(ButtonX, ButtonY);
 	ImGuiWindowFlags flazhoks =
 		ImGuiWindowFlags_AlwaysAutoResize |
-		ImGuiWindowFlags_NoResize;
+		ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoScrollbar;
 
 	bool useSalad;
 	bool usePie;
@@ -96,7 +99,7 @@ public:
 
 	void settingsWindow(bool& settingsOpen) {
 		
-		ImGui::Begin("Settings", &settingsOpen, flazhoks |= ImGuiWindowFlags_MenuBar);
+		ImGui::Begin("Settings", &settingsOpen, flazhoks);
 		
 		
 		//slider areaRadius

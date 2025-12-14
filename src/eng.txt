@@ -1,0 +1,12 @@
+Requirments:
+low settings,
+Resolution 1920x1080
+
+Before starting to fish, open "Settings" and configure your desired options.
+If you've enabled food or bait in settings, note that the bot will only activate
+ them after 10 and 30 minutes - make sure to apply them manually before launching.
+
+For better understanding into what the bot detects, i recommend enabling the "debug" option.
+Press the "Start" button, position your cursor over the fishing area, then press Numpad 5 (default hotkey).
+The bot will run continuously until manually stopped, and will automatically reconnect if the server restarts.
+To stop fishing, press Numpad 0 (default). All keybinds can be viewed and customized in the "Keybinds" tab.
