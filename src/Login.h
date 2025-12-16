@@ -43,7 +43,7 @@ void sessionStatus() {
 	if (!KeyAuthApp.response.success) {
 		exit(0);
 	}
-
+	
 	if (KeyAuthApp.response.isPaid) {
 		while (isLogged.load()) {
 			std::this_thread::sleep_for(std::chrono::seconds(20)); // this MUST be included or else you get blocked from API
@@ -53,6 +53,7 @@ void sessionStatus() {
 			}
 		}
 	}
+	
 }
 
 void checkAuthenticated(std::string ownerid) {

@@ -5,6 +5,8 @@ Resolution 1920x1080
 Before starting to fish, open "Settings" and configure your desired options.
 If you've enabled food or bait in settings, note that the bot will only activate
  them after 10 and 30 minutes - make sure to apply them manually before launching.
+All the things the bot will interact with from the inventory (thrash/bait/food)
+Must be in the visible part of the inventory bot cannot scroll through it
 
 For better understanding into what the bot detects, i recommend enabling the "debug" option.
 Press the "Start" button, position your cursor over the fishing area, then press Numpad 5 (default hotkey).

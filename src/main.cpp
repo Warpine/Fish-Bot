@@ -1,4 +1,3 @@
-#define IDI_APP_ICON 102
 #include<opencv2/imgcodecs.hpp>
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
@@ -18,42 +17,42 @@
 #include"Login.h"
 
 //debug
-//#include<iostream>
-//#include <fstream>
-//#include <io.h>
-//#include <fcntl.h>
-//#include <stdio.h>
+#include<iostream>
+#include <fstream>
+#include <io.h>
+#include <fcntl.h>
+#include <stdio.h>
 //debug
 
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
-//void CreateConsole()
-//{
-//	AllocConsole();
-//
-//	// Перенаправление стандартного вывода (std::cout)
-//	HANDLE stdHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-//	int hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
-//	FILE* fp = _fdopen(hConHandle, "w");
-//	freopen_s(&fp, "CONOUT$", "w", stdout);
-//
-//	// Перенаправление стандартного ввода (std::cin)
-//	stdHandle = GetStdHandle(STD_INPUT_HANDLE);
-//	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
-//	fp = _fdopen(hConHandle, "r");
-//	freopen_s(&fp, "CONIN$", "r", stdin);
-//
-//	// Перенаправление стандартного ошибок (std::cerr)
-//	stdHandle = GetStdHandle(STD_ERROR_HANDLE);
-//	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
-//	fp = _fdopen(hConHandle, "w");
-//	freopen_s(&fp, "CONOUT$", "w", stderr);
-//
-//	// Очищаем буферы, чтобы все сразу попадало в консоль
-//	std::ios::sync_with_stdio();
-//}
+void CreateConsole()
+{
+	AllocConsole();
+
+	// Перенаправление стандартного вывода (std::cout)
+	HANDLE stdHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+	int hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+	FILE* fp = _fdopen(hConHandle, "w");
+	freopen_s(&fp, "CONOUT$", "w", stdout);
+
+	// Перенаправление стандартного ввода (std::cin)
+	stdHandle = GetStdHandle(STD_INPUT_HANDLE);
+	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+	fp = _fdopen(hConHandle, "r");
+	freopen_s(&fp, "CONIN$", "r", stdin);
+
+	// Перенаправление стандартного ошибок (std::cerr)
+	stdHandle = GetStdHandle(STD_ERROR_HANDLE);
+	hConHandle = _open_osfhandle((intptr_t)stdHandle, _O_TEXT);
+	fp = _fdopen(hConHandle, "w");
+	freopen_s(&fp, "CONOUT$", "w", stderr);
+
+	// Очищаем буферы, чтобы все сразу попадало в консоль
+	std::ios::sync_with_stdio();
+}
 
 
 
@@ -67,7 +66,9 @@ std::thread run;
 std::thread check; // do NOT remove this function either.
 
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
-		
+	
+	
+
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
@@ -137,6 +138,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	keyAuthInit();
 	isLogged = keySucces();
 
+
 	if (!run.joinable()) {
 		run = std::thread(checkAuthenticated, ownerid);
 		// do NOT remove checkAuthenticated(), it MUST stay for security reasons
@@ -200,7 +202,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 				state.fihing = false;
 			  }
 
-			  if (vizu.getSelectAreaState()) {
+			  if (vizu.getSelectAreaState() && vizu.getTimerStatus()) {
 				auto clockEnd = std::chrono::high_resolution_clock::now();
 				vizu.duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - vizu.clockStart).count();
 				if (vizu.duration >= 360) {

@@ -109,10 +109,10 @@ private:
 		
 
 		
-		ImGui::Checkbox("debug", &debug);
+		ImGui::Checkbox("View", &debug);
 		ImGui::SameLine(config.ButtonX * 2);
 		ImGui::Text(author2.c_str());
-		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.f / io.Framerate, io.Framerate);
+		
 		ImGui::End();
 	}
 	void GuideWindow(){

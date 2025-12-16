@@ -39,25 +39,13 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 		buffsActive = true;
 		if(config.usePie || config.useSalad)
 		   timeFoodStart = clockStart;
-		if(config.useBait)
-		   timeBaitStart = clockStart;
 	}
-	//clockStart = std::chrono::high_resolution_clock::now();
+	
 	while (fihingState.load())
 	{
 		if (shouldExit.load()) { break; }
 
-		auto clockEnd = std::chrono::high_resolution_clock::now();
-			/*if (duration > std::chrono::seconds(360))
-				fihingState = false;*/
-
 			CaptureFih();
-			/*auto clockEnd = std::chrono::high_resolution_clock::now();
-			std::chrono::seconds duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - clockStart);
-			if (duration > std::chrono::seconds(360))
-				fihingState = false;*/
-				//сначала фикс логики, потом таймер
-			
 	}
 	
 	stopCapture();
@@ -66,47 +54,52 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 
 void Vision::CaptureFih()
 {   
-
+	
 	switch (status)
 	{
 
 	case STARTED:
-		//std::cout << "status = STARTED" << std::endl;
-		//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		if (!timerActive) {
+			timerActive = true;
+			clockStart = std::chrono::high_resolution_clock::now();
+		}
+
 		getDesktopMat();
 		getImage();
 
 		statusMessage = "thrown";
-		pressKeyMouseLeft(config.throwTimeMs);
+		pressKeyMouseLeft(config.throwTimeMs + (rand() % 20));
 		status = LOOKING;
 		break;
 
 	case LOOKING:
-		//std::cout << "status = LOOKING" << std::endl;
+
 		statusMessage = "looking for bobber";
 		std::this_thread::sleep_for(std::chrono::milliseconds(650));
 		
-		if (checkRestart()) { break; }
+		
 		getDesktopMat();
 		getImage();
-		
 
 		
-		if (boundRect.area() > inWaterSizeMin) {
+		std::cout << boundRect.area() << std::endl;
+		if (boundRect.area() >= inWaterSizeMin) {
+			if (checkRestart()) { break; }
 			status = FOUND;
 			
 			break;
 		}
 		
-		
+		if (checkRestart()) { break; }
 		break;
 	case FOUND:
 		statusMessage = "found and watching";
-		//std::cout << "status = FOUND " << std::endl;
+		
 		getDesktopMat();
 		getImage();
-        
-		if (boundRect.area() < inWaterSizeMin) {
+		//if (checkRestart()) { break; }
+		std::cout << boundRect.area() << std::endl;
+		if (boundRect.area() < inWaterSizeMin /* || rectSizeDifference >= rectSizeTreshold */ ) {
 			status = CATCH;
 			if (checkRestart()) { break; }
 			pressKeyMouseLeft(10);
@@ -119,18 +112,19 @@ void Vision::CaptureFih()
 
 	case CATCH:
 		statusMessage = "catching";
-		//std::cout << "status = CATCH" << std::endl;
+		
 		getDesktopMat();
 		getImage();
-		//catchProcess();
 		
-		//std::cout << "boundRect.area = " << boundRect.area() << std::endl; //debug
+		
+		
 		if (boundRect.empty()) {
 			emptyCounter++;
-			std::cout << emptyCounter << std::endl;
+			
 			if (emptyCounter >= 7) { //можно после этого ждать какое-то время и проверять на ошибку с новым изображением
 				
-				
+				//rectSizeDifference = 0;
+				//prevBoundRect = cv::Rect();
 			    status = FINISHED;
 				
 				inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
@@ -155,8 +149,7 @@ void Vision::CaptureFih()
 
 		status = STARTED;
 		statusMessage = "Fihing end";
-		
-		
+		ZeroMemory(&inputCatch, sizeof(inputCatch));
 		
 
 		if (checkRestart()) { break; } 
@@ -165,7 +158,16 @@ void Vision::CaptureFih()
 
 			if (cleanCounter == config.cycles) {
 				statusMessage = "cleaning";
-				cleanInventory();
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+				sendKeyPress(config.inventoryKey);
+				cleanInventory(LOGS);
+				std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+				cleanInventory(STONE);
+				sendKeyPress(config.inventoryKey);
+				std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+				SetCursorPos(itThatRemember.x, itThatRemember.y);
+
 				cleanCounter = 0;
 				
 			}
@@ -173,12 +175,12 @@ void Vision::CaptureFih()
 		if (buffsActive) {
 			
 			if (config.useBait) {
-				auto endBait = std::chrono::high_resolution_clock::now();
-				auto durationBait = std::chrono::duration_cast<std::chrono::minutes>(endBait - timeBaitStart);
-				if (durationBait >= std::chrono::minutes(10)) {
+				baitCounter++;
+				
+				if (baitCounter >= 10) {
 					statusMessage = "Uses bait";
 					useBuff(BAIT);
-					timeBaitStart = std::chrono::high_resolution_clock::now();
+					baitCounter = 0;
 				}
 			}
 			
@@ -201,16 +203,17 @@ void Vision::CaptureFih()
 		break;
 	case SERVER_RESTART:
 		statusMessage = "Server restart detected";
+		timerActive = false;
 		clockStart = std::chrono::high_resolution_clock::now();
 
 		RestartingP1();
-		clockStart = std::chrono::high_resolution_clock::now();
+		
 		if (okWindowCheck()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 			break; 
 		}
 		RestartingP2();
-		clockStart = std::chrono::high_resolution_clock::now();
+		
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		SetCursorPos(itThatRemember.x, itThatRemember.y);
@@ -238,17 +241,17 @@ void Vision::catchProcess() {
 			boundRect.x + boundRect.width / 2,
 			boundRect.y + boundRect.height / 2
 		);
-		//std::cout << "center.x = "<< center.x << std::endl; //debug
+		
 
 		if (center.x <= scalePosDOWN && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
 			SendInput(1, &inputCatch, sizeof(INPUT));
-			std::cout << "Mouse DOWN" << std::endl;
+			//std::cout << "Mouse DOWN" << std::endl;
 		}
 		if (center.x >= scalePosUP && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP)) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 			SendInput(1, &inputCatch, sizeof(INPUT));
-			std::cout << "Mouse UP" << std::endl;
+			//std::cout << "Mouse UP" << std::endl;
 		}
 
 	}
@@ -256,7 +259,7 @@ void Vision::catchProcess() {
 		if (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 			SendInput(1, &inputCatch, sizeof(INPUT));
-			std::cout << "Mouse UP" << std::endl;
+			//std::cout << "Mouse UP" << std::endl;
 		}
 	}
 	
@@ -377,7 +380,7 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 			selectedArea.bottom = cursorPos.y + config.areaRadius / 2;
 			break;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 	isAreaSelected = fihingState.load();
 }
@@ -421,7 +424,7 @@ void Vision::getImage() {
 	
 	
 
-	static int minVal = 35;
+	static int minVal = 40;
 
 	if (status != CATCH) {
 		img = cropMat();
@@ -472,14 +475,20 @@ void Vision::getImage() {
 		//std::cout << boundRect.area() << std::endl;
 		
 		if (status != CATCH) {
-			if (boundRect.area() >= inWaterSizeMin && boundRect.area() <= inWaterSizeMax) {
+			if (boundRect.area() >= inWaterSizeMin) {
+				
+				
 				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+				
 			}
 
 		}
 		else {
 			if (boundRect.area() < inWaterSizeMin && boundRect.area() >= inScaleSize) {
 				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+			}
+			else {
+				boundRect = cv::Rect();
 			}
 		}
 	}
@@ -598,7 +607,8 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect) //над
 				storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
 				storedRect.y += startRow;
 				storedRect.height -= 24;
-				
+				storedRect.y += 4;
+				storedRect.height -= 4;
 			}
 			else { 
 				storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
@@ -648,22 +658,23 @@ void Vision::TextureForDebug()
 	texture->Release();
 }
 
-void Vision::cleanInventory()
+void Vision::cleanInventory(matchingEnum matchi)
 {
 	//start
-	sendKeyPress(config.inventoryKey);
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	//sendKeyPress(config.inventoryKey);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(1300));
 	getDesktopMat();
 	//
 	cv::Rect cleanRect = cv::Rect();
-	cv::Mat cleanImage = matchingMethod(LOGS, cleanRect);
+	cv::Mat cleanImage = matchingMethod(matchi, cleanRect);
 	if (cleanImage.empty()) {
 		statusMessage = "no trash found";
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		sendKeyPress(config.inventoryKey);
 		return;
 	}
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 
 	SetCursorPos(itThatPOINT.x, itThatPOINT.y); 
 
@@ -674,29 +685,28 @@ void Vision::cleanInventory()
 	input.mi.dx = 0;
 	input.mi.dy = 0;
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
 	SendInput(1, &input, sizeof(input));
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 	SetCursorPos(fullScale.cols / 2, fullScale.rows / 2);
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 	SendInput(1, &input, sizeof(input));
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	std::this_thread::sleep_for(std::chrono::milliseconds(1300));
 
 	SetCursorPos(fullScale.cols / 2 - 100, fullScale.rows / 2);
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	pressKeyMouseLeft(10);
 
 	//end
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	sendKeyPress(config.inventoryKey);
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
-	SetCursorPos(itThatRemember.x, itThatRemember.y);
+	std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+	//sendKeyPress(config.inventoryKey);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(1300));
+	//SetCursorPos(itThatRemember.x, itThatRemember.y);
 	//
 }
-
 
 void Vision::useBuff(matchingEnum type)
 {
@@ -719,6 +729,7 @@ void Vision::useBuff(matchingEnum type)
 				cv::Rect pieRect = cv::Rect();
 				buffImage = matchingMethod(PIE, pieRect);
 				if (buffImage.empty()) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 					sendKeyPress(config.inventoryKey);
 					return;
 				}
@@ -728,6 +739,7 @@ void Vision::useBuff(matchingEnum type)
 				cv::Rect saladRect = cv::Rect();
 				buffImage = matchingMethod(SALAD, saladRect);
 				if (buffImage.empty()) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 					sendKeyPress(config.inventoryKey);
 					return;
 				}
@@ -768,13 +780,13 @@ void Vision::useBuff(matchingEnum type)
 			inputs.ki.wVk = VK_SHIFT;
 			SendInput(1, &inputs, sizeof(INPUT));
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 			sendKeyPress(config.inventoryKey);
 			std::this_thread::sleep_for(std::chrono::seconds(12));
 			sendKeyPress(config.foodKey);
 
 	
-			std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+			std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 			SetCursorPos(itThatRemember.x, itThatRemember.y);
 
 			return;
@@ -795,13 +807,15 @@ void Vision::useBuff(matchingEnum type)
 		cv::Rect baitRect = cv::Rect();
 		buffImage = matchingMethod(BAIT, baitRect);
 		if (buffImage.empty()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+			sendKeyPress(config.inventoryKey);
 			return;
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+		std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
 		
-		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1300));
 		pressKeyMouseLeft(10);
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
 		getDesktopMat();
@@ -810,6 +824,7 @@ void Vision::useBuff(matchingEnum type)
 		cv::Rect usebRect = cv::Rect();
 		buffImage = matchingMethod(USEBUTTON, usebRect);
 		if (buffImage.empty()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 			sendKeyPress(config.inventoryKey);
 			return;
 		}
@@ -819,10 +834,10 @@ void Vision::useBuff(matchingEnum type)
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(700));
 		pressKeyMouseLeft(10);
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		sendKeyPress(config.inventoryKey);
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+		std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 		SetCursorPos(itThatRemember.x, itThatRemember.y);
 
 	}
@@ -859,7 +874,7 @@ void Vision::debugWindow() {
 		imguiTexture = NULL;
 	}
 	
-	ImGui::Begin("debug", NULL, config.flazhoks);
+	ImGui::Begin("View", NULL, config.flazhoks);
 	ImGui::Text(statusMessage.c_str());
 	
 	if (status != CATCH) {
@@ -912,7 +927,7 @@ bool Vision::okWindowCheck()
 		return true;
 	}
 	else {
-		return true;
+		return false;
 	}
 }
 

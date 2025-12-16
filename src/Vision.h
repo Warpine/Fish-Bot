@@ -102,15 +102,15 @@ private:
 	//c высоты  800-875   ---- клюнуло  209-450
 	//с средней 1500-1700 ---- клюнуло  252-644
 	//c низов   2400-2900 ---- клюнуло  546-975
-	const int inWaterSizeMin = 680;
+	const int inWaterSizeMin = 1200;
 	const int inScaleSize = 60;
-	//used only in debug window
-	const int inWaterSizeMax = 2900; 
 	
 	bool buffsActive = false;
 	std::chrono::steady_clock::time_point timeFoodStart;
-	std::chrono::steady_clock::time_point timeBaitStart;
-	//std::chrono::steady_clock::time_point timeBeforeErrorStart;
+	
+	int baitCounter = 0;
+	bool timerActive = true;
+
 	//add new objects here
 	const std::vector<std::vector<int>> objHSV = {
 		//hmin, hmax, smin, smax, vmin, vmax
@@ -124,15 +124,16 @@ private:
 		PIE, //dont use directly, use SLOT instead
 		SALAD,//dont use directly, use SLOT instead
 		BAIT,
-		LOGS,
+		LOGS, //clean inventory
 		SLOT,
 		MAINLOGO, //restart check
 		LOGINBUTTON, //restart check
 		ENTERWORLDBUTTON, //restart check
-		USEBUTTON, //use bait instead
+		USEBUTTON, //dont use directly, use bait instead
 		YESBUTTON, //clean inventory
 		SERVERNOTICE, // restart check
 		OKBUTTON, //restart check
+		STONE //clean inventory
 	};
 	std::vector<int> matchingThresholds = {
 		10,
@@ -147,7 +148,8 @@ private:
 		224,
 		221,
 		221,
-		221,
+		210,
+		247
 	};
     
 	const std::vector<cv::Mat> matchingTempl = {
@@ -163,7 +165,8 @@ private:
 		cv::imread("src/useButton.png", cv::IMREAD_COLOR),
 		cv::imread("src/yesButton.png", cv::IMREAD_COLOR),
 		cv::imread("src/serverNotice.png", cv::IMREAD_COLOR),
-		cv::imread("src/okButton.png", cv::IMREAD_COLOR)
+		cv::imread("src/okButton.png", cv::IMREAD_COLOR),
+		cv::imread("src/stone.png", cv::IMREAD_COLOR)
 
 	};
 
@@ -178,6 +181,7 @@ private:
 		cv::TM_SQDIFF,
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF,
+		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED
@@ -201,7 +205,7 @@ private:
 	cv::Mat matchingMethod(matchingEnum type, cv::Rect& storedRect);
 	void catchProcess();
 	void TextureForDebug();
-	void cleanInventory();
+	void cleanInventory(matchingEnum matchi);
 	void useBuff(matchingEnum type);
 	bool checkRestart();
 	//it was 1 function, but its not work in case
@@ -210,6 +214,7 @@ private:
 	bool okWindowCheck();
 	//it was 1 function, but its not work in case
 	void RestartingP2();
+	
 
 	
 public:
@@ -218,7 +223,11 @@ public:
 	void init_g_pd3dDevice_(ID3D11Device* g_pd3dDevicee) {
 		g_pd3dDevice_ = g_pd3dDevicee;
 	}
+	bool getTimerStatus() {
+		return timerActive;
+	}
 
+	
 	int duration;
 	std::chrono::steady_clock::time_point clockStart;
 	std::atomic<time_t> startTime;
