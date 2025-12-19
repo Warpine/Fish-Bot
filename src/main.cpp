@@ -68,12 +68,12 @@ std::thread check; // do NOT remove this function either.
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	
 	
-
+	
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
 	
-	
+
 	//CreateConsole();
 	//std::cout << "test" << std::endl;
 	
@@ -106,8 +106,8 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	ImFont *idk = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Arial.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
-	io.FontDefault = idk;
+	ImFont *mainFont = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Arial.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
+	io.FontDefault = mainFont;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
@@ -138,6 +138,12 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	keyAuthInit();
 	isLogged = keySucces();
 
+	
+	if (isLogged.load()) {
+		futureLogin loginG;
+		state.setMainTitle(loginG.getTitle());
+	}
+	
 
 	if (!run.joinable()) {
 		run = std::thread(checkAuthenticated, ownerid);

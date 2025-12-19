@@ -97,7 +97,7 @@ void Vision::CaptureFih()
 		
 		getDesktopMat();
 		getImage();
-		//if (checkRestart()) { break; }
+		
 		std::cout << boundRect.area() << std::endl;
 		if (boundRect.area() < inWaterSizeMin /* || rectSizeDifference >= rectSizeTreshold */ ) {
 			status = CATCH;
@@ -197,7 +197,7 @@ void Vision::CaptureFih()
 			
 			
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+		std::this_thread::sleep_for(std::chrono::milliseconds(3500));
 		
 		
 		break;
@@ -907,6 +907,8 @@ void Vision::RestartingP1() {
 	cv::Rect loginRect = cv::Rect();
 	cv::Mat loginMat = matchingMethod(LOGINBUTTON, loginRect);
 	if (!loginMat.empty()) {
+		statusMessage = "Login found";
+		std::this_thread::sleep_for(std::chrono::milliseconds(2050));
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		pressKeyMouseLeft(12);
@@ -918,25 +920,30 @@ void Vision::RestartingP1() {
 
 bool Vision::okWindowCheck() 
 {
+	getDesktopMat();
 	cv::Rect okRect = cv::Rect();
 	cv::Mat okMat = matchingMethod(OKBUTTON, okRect);
 	if (!okMat.empty()) {
+		statusMessage = "OK button found";
+		std::this_thread::sleep_for(std::chrono::milliseconds(2050));
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		pressKeyMouseLeft(12);
 		return true;
 	}
-	else {
-		return false;
-	}
+	
+	return false;
+	
 }
 
 void Vision::RestartingP2() 
 {
+	getDesktopMat();
 	cv::Rect enterWorldRect = cv::Rect();
 	cv::Mat enterWorldMat = matchingMethod(ENTERWORLDBUTTON, enterWorldRect);
 	if (!enterWorldMat.empty()) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		statusMessage = "EnterWorld found";
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		pressKeyMouseLeft(12);
@@ -952,4 +959,5 @@ void Vision::RestartingP2()
 		}
 
 	}
+	
 }

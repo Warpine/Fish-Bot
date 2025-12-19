@@ -124,7 +124,7 @@ public:
 			ImGui::SetTooltip(throwTooltip.c_str());
 		}
 		ImGui::SameLine();
-		ImGui::SliderInt("Cleanup", &cycles, 0, 100);
+		ImGui::SliderInt("Cleanup", &cycles, 0, 50);
 
 		
 		if (ImGui::Checkbox("Use Pie", &usePie)) {

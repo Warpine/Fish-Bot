@@ -102,7 +102,7 @@ private:
 	//c высоты  800-875   ---- клюнуло  209-450
 	//с средней 1500-1700 ---- клюнуло  252-644
 	//c низов   2400-2900 ---- клюнуло  546-975
-	const int inWaterSizeMin = 1200;
+	const int inWaterSizeMin = 1500;
 	const int inScaleSize = 60;
 	
 	bool buffsActive = false;
@@ -133,23 +133,27 @@ private:
 		YESBUTTON, //clean inventory
 		SERVERNOTICE, // restart check
 		OKBUTTON, //restart check
-		STONE //clean inventory
+		STONE, //clean inventory
+		CLOSEBUTTONX,
+		BOBBER
 	};
 	std::vector<int> matchingThresholds = {
-		10,
-		151,
-		249,
-		151,
-		247,
-		200,
-		30,
-		25,
-		131,
-		224,
-		221,
-		221,
-		210,
-		247
+		10, //scale
+		151, //pie
+		249, //salad
+		151, //bait
+		247, //logs
+		200, //slot
+		30, //main logo
+		221, //login button
+		131, //enter world button
+		224, //use button
+		221, //yes button
+		221, //server notice
+		240, //ok button
+		247, //stone
+		131, //close button(x)
+		171
 	};
     
 	const std::vector<cv::Mat> matchingTempl = {
@@ -166,8 +170,9 @@ private:
 		cv::imread("src/yesButton.png", cv::IMREAD_COLOR),
 		cv::imread("src/serverNotice.png", cv::IMREAD_COLOR),
 		cv::imread("src/okButton.png", cv::IMREAD_COLOR),
-		cv::imread("src/stone.png", cv::IMREAD_COLOR)
-
+		cv::imread("src/stone.png", cv::IMREAD_COLOR),
+		cv::imread("src/closeButton.png", cv::IMREAD_COLOR),
+		cv::imread("src/coolFloat.png", cv::IMREAD_COLOR)
 	};
 
 	const std::vector<cv::TemplateMatchModes> matchingModes = {
@@ -178,9 +183,11 @@ private:
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_SQDIFF_NORMED,
-		cv::TM_SQDIFF,
+		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF,
+		cv::TM_CCOEFF_NORMED,
+		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED,
 		cv::TM_CCOEFF_NORMED,

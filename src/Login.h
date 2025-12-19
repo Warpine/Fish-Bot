@@ -150,24 +150,41 @@ void AuthorizationWindow() {
 	}
 }
 
-std::string tm_to_readable_time(tm ctx) {
-	char buffer[80];
+struct futureLogin { //this is shit
+	
+	futureLogin(){
 
-	strftime(buffer, sizeof(buffer), "%a %m/%d/%y %H:%M:%S %Z", &ctx);
+	}
+	
+	std::string tm_to_readable_time(tm ctx) {
+		char buffer[80];
 
-	return std::string(buffer);
-}
+		strftime(buffer, sizeof(buffer), "%a %m/%d/%y %H:%M:%S", &ctx);
 
-static std::time_t string_to_timet(std::string timestamp) {
-	auto cv = strtol(timestamp.c_str(), NULL, 10); // long
+		return std::string(buffer);
+	}
 
-	return (time_t)cv;
-}
+	static std::time_t string_to_timet(std::string timestamp) {
+		auto cv = strtol(timestamp.c_str(), NULL, 10); // long
 
-static std::tm timet_to_tm(time_t timestamp) {
-	std::tm context;
+		return (time_t)cv;
+	}
 
-	localtime_s(&context, &timestamp);
+	static std::tm timet_to_tm(time_t timestamp) {
+		std::tm context;
 
-	return context;
-}
+		localtime_s(&context, &timestamp);
+
+		return context;
+	}
+	std::string getTitle() {
+		return Bykvi + expire;
+	}
+	
+private:
+	
+	std::string expire = tm_to_readable_time(timet_to_tm(string_to_timet(KeyAuthApp.user_data.subscriptions[0].expiry)));
+	std::string Bykvi = skCrypt("Active Until: ").decrypt();
+
+};
+

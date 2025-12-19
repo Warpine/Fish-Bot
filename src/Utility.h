@@ -26,7 +26,7 @@ private:
 	std::string windowTitle = skCrypt("FihBot 1.0 - Built at:  ").decrypt() + compilation_date + " " + compilation_time;
 	std::string guidelineRus;
 	std::string guidelineEng;
-	std::string author2 = skCrypt("Made by BlevotoDevotion").decrypt();
+	std::string author2 = skCrypt("Telegram @Sektor223").decrypt();
 
 	bool showMainWin = true;
 	bool showHint = true;
@@ -42,7 +42,9 @@ public:
 		guidelineEng = readFileToString("src/eng.txt");
 		guidelineRus = readFileToString("src/rus.txt");
 	}
-	
+	void setMainTitle(std::string title) {
+		windowTitle = "FihBot 1.0 " + title;
+	}
 	void manage() {
 		
 		if (!fihing.load()) {
@@ -110,7 +112,7 @@ private:
 
 		
 		ImGui::Checkbox("View", &debug);
-		ImGui::SameLine(config.ButtonX * 2);
+		ImGui::SameLine(config.ButtonX * 2.5);
 		ImGui::Text(author2.c_str());
 		
 		ImGui::End();
