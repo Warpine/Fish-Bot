@@ -69,9 +69,9 @@ private:
 	static inline INPUT inputCatch = { 0 };
 	
 	//used in catchProcess
-	const int scalePosDOWN = 140;
+	const int scalePosDOWN = 135;
 	//used in catchProcess
-	const int scalePosUP = 155;
+	const int scalePosUP = 150;
 
 	//used in initWindow
 	bool init = false;
@@ -93,7 +93,7 @@ private:
 	//reset when fishing cycle end
 	cv::Rect scaleRect = cv::Rect();
 	POINT itThatPOINT = POINT();
-
+	cv::Mat displayImage;
 	//used in getImage
 	cv::Mat	img, imgHSV, imgMask;
 	std::vector<std::vector<cv::Point>> contours;
@@ -107,7 +107,7 @@ private:
 	
 	bool buffsActive = false;
 	std::chrono::steady_clock::time_point timeFoodStart;
-	
+	cv::Rect foundRect;
 	int baitCounter = 0;
 	bool timerActive = true;
 
@@ -135,7 +135,7 @@ private:
 		OKBUTTON, //restart check
 		STONE, //clean inventory
 		CLOSEBUTTONX,
-		BOBBER
+		BOBBERINSCALE
 	};
 	std::vector<int> matchingThresholds = {
 		10, //scale
@@ -209,8 +209,8 @@ private:
 	void getMaskColorBased(cv::Mat& imgMask, objType type);
 	void getImage();
 	
-	cv::Mat matchingMethod(matchingEnum type, cv::Rect& storedRect);
 	void catchProcess();
+	cv::Mat matchingMethod(matchingEnum type, cv::Mat fullMat = cv::Mat(), cv::Rect* storedRect = nullptr);
 	void TextureForDebug();
 	void cleanInventory(matchingEnum matchi);
 	void useBuff(matchingEnum type);
@@ -221,7 +221,8 @@ private:
 	bool okWindowCheck();
 	//it was 1 function, but its not work in case
 	void RestartingP2();
-	
+	cv::Mat getTemplateInTemplate(matchingEnum backTemplate, matchingEnum frontTemplate, cv::Rect& backRect);
+	//void getImageInImage(matchingEnum firstImage, matchingEnum secondTemplate);
 
 	
 public:

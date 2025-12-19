@@ -114,25 +114,23 @@ void Vision::CaptureFih()
 		statusMessage = "catching";
 		
 		getDesktopMat();
-		getImage();
+		img = getTemplateInTemplate(SCALE, BOBBERINSCALE, scaleRect);
 		
+
 		
-		
-		if (boundRect.empty()) {
+		if (img.empty()) {
 			emptyCounter++;
 			
 			if (emptyCounter >= 7) { //можно после этого ждать какое-то время и проверять на ошибку с новым изображением
 				
-				//rectSizeDifference = 0;
-				//prevBoundRect = cv::Rect();
+				
 			    status = FINISHED;
 				
 				inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 				SendInput(1, &inputCatch, sizeof(INPUT));
 
 				emptyCounter = 0;
-				//status = FINISHED;
-				//Sleep(2000);
+				
 				break;
 			}
 		}
@@ -228,43 +226,30 @@ void Vision::CaptureFih()
 
 void Vision::catchProcess() { 
 	
-	
 
 	
-
-	if (boundRect.area() <= inWaterSizeMin && boundRect.area() >= inScaleSize)
-	{
 		inputCatch.type = INPUT_MOUSE;
 		inputCatch.mi.dx = 0;
 		inputCatch.mi.dy = 0;
-		cv::Point center(
+		/*cv::Point center(
 			boundRect.x + boundRect.width / 2,
 			boundRect.y + boundRect.height / 2
-		);
+		);*/
 		
 
-		if (center.x <= scalePosDOWN && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)) {
+		if (itThatPOINT.x <= scalePosDOWN && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
 			SendInput(1, &inputCatch, sizeof(INPUT));
 			//std::cout << "Mouse DOWN" << std::endl;
 		}
-		if (center.x >= scalePosUP && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP)) {
+		if (itThatPOINT.x >= scalePosUP && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP)) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 			SendInput(1, &inputCatch, sizeof(INPUT));
 			//std::cout << "Mouse UP" << std::endl;
 		}
 
-	}
-	else {
-		if (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP) {
-			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-			SendInput(1, &inputCatch, sizeof(INPUT));
-			//std::cout << "Mouse UP" << std::endl;
-		}
 	}
 	
-	}
-
 void Vision::stopCapture()
 {
 	if (cv::getWindowProperty(winName, cv::WND_PROP_VISIBLE) > 0) {
@@ -430,7 +415,7 @@ void Vision::getImage() {
 		img = cropMat();
 	}
 	else {
-		img = matchingMethod(SCALE, scaleRect);
+		img = matchingMethod(SCALE);
 	}
 	
 	if (img.empty()) {
@@ -469,6 +454,7 @@ void Vision::getImage() {
 		}
 	}
 
+	displayImage = img;
 	//find rect for bobber
 	if (maxAreaIdx >= 0) {
 		boundRect = cv::boundingRect(contours[maxAreaIdx]);
@@ -478,17 +464,14 @@ void Vision::getImage() {
 			if (boundRect.area() >= inWaterSizeMin) {
 				
 				
-				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+				cv::rectangle(displayImage, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
 				
 			}
 
 		}
 		else {
 			if (boundRect.area() < inWaterSizeMin && boundRect.area() >= inScaleSize) {
-				cv::rectangle(img, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
-			}
-			else {
-				boundRect = cv::Rect();
+				cv::rectangle(displayImage, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
 			}
 		}
 	}
@@ -503,58 +486,60 @@ void Vision::getImage() {
 @return  fullScale(storedRect).clone() 
 
  */
-cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect) //надо сделать так чтобы принимал и рект, чтобы не ебаться каждый раз с опустошением сторедРекта и опустошать только скейлРект
+cv::Mat Vision::matchingMethod(matchingEnum type, cv::Mat fullMat, cv::Rect* storedRect)
 {
-	
-	if(!storedRect.empty())
+	if (fullMat.empty()) {
+		fullMat = fullScale;
+	}
+
+	if(storedRect != nullptr && !storedRect->empty())
 	{ 
-		return fullScale(storedRect).clone();
+
+		return fullMat(*storedRect).clone();
 	
 	}
 
 	else {
-		
-		int startRow;
-		cv::Mat cropped = fullScale;
-		
-		if (status == CATCH) {
-			startRow = fullScale.rows * 0.45;
-			cropped = fullScale(cv::Range(startRow, fullScale.rows), cv::Range::all());
-		}
 
 		cv::Mat templ4chnl;
 		cv::cvtColor(matchingTempl[type], templ4chnl, cv::COLOR_BGR2BGRA);
 	    
 		if (templ4chnl.empty()) {
 			statusMessage = "Template Not Found";
-			storedRect = cv::Rect();
+			if (storedRect != nullptr) {
+				*storedRect = cv::Rect();
+			}
+			
 			std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-			return cv::Mat();
+			exit(1);
 		}
 
 		
 
 		cv::Mat result;
-		int result_cols = cropped.cols - templ4chnl.cols + 1;
-		int result_rows = cropped.rows - templ4chnl.rows + 1;
+		int result_cols = fullMat.cols - templ4chnl.cols + 1;
+		int result_rows = fullMat.rows - templ4chnl.rows + 1;
 
 		result.create(result_rows, result_cols, CV_32FC1);
 
 		
 		try {
-			cv::matchTemplate(cropped, templ4chnl, result, matchingModes[type]);
+			cv::matchTemplate(fullMat, templ4chnl, result, matchingModes[type]);
 		}
 		catch (const cv::Exception& e) {
-			if (cropped.type() != templ4chnl.type())
+			if (fullMat.type() != templ4chnl.type())
 			{
 				statusMessage = "types of image not matching";
 			}
 			else {
 				statusMessage = "idk exeption lol";
 			}
-			storedRect = cv::Rect();
+
+			if (storedRect != nullptr) {
+				*storedRect = cv::Rect();
+			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-			return cv::Mat();
+			exit(1);
 		}
 			
 
@@ -599,24 +584,17 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect) //над
 				matchLoc = maxLoc;
 			}
 			
+			foundRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
 			
-			
-			
-
-			if (status == CATCH) {
-				storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
-				storedRect.y += startRow;
-				storedRect.height -= 24;
-				storedRect.y += 4;
-				storedRect.height -= 4;
+			if (storedRect != nullptr) {
+				*storedRect = foundRect;
 			}
-			else { 
-				storedRect = cv::Rect(matchLoc, cv::Point(matchLoc.x + templ4chnl.cols, matchLoc.y + templ4chnl.rows));
-				itThatPOINT = POINT(matchLoc.x + templ4chnl.cols / 2, matchLoc.y + templ4chnl.rows / 2);
+			itThatPOINT = POINT(matchLoc.x + templ4chnl.cols / 2, matchLoc.y + templ4chnl.rows / 2);
+		
 
-			}
+
 			
-			return fullScale(storedRect).clone();
+			return fullMat(foundRect).clone();
 			//работает по такому же принципу как кроп мат
 			
 
@@ -630,14 +608,14 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Rect& storedRect) //над
 
 void Vision::TextureForDebug()
 {
-	if (img.empty()) {
+	if (displayImage.empty()) {
 		return;
 	}
 	
 	
 	D3D11_TEXTURE2D_DESC desc = {};
-	desc.Width = img.cols;
-	desc.Height = img.rows;
+	desc.Width = displayImage.cols;
+	desc.Height = displayImage.rows;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -646,8 +624,8 @@ void Vision::TextureForDebug()
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
 	D3D11_SUBRESOURCE_DATA initData = {};
-	initData.pSysMem = img.data;
-	initData.SysMemPitch = img.cols * 4;
+	initData.pSysMem = displayImage.data;
+	initData.SysMemPitch = displayImage.cols * 4;
 
 	ID3D11Texture2D* texture = nullptr;
 	g_pd3dDevice_->CreateTexture2D(&desc, &initData, &texture);
@@ -665,15 +643,17 @@ void Vision::cleanInventory(matchingEnum matchi)
 	//std::this_thread::sleep_for(std::chrono::milliseconds(1300));
 	getDesktopMat();
 	//
-	cv::Rect cleanRect = cv::Rect();
-	cv::Mat cleanImage = matchingMethod(matchi, cleanRect);
+	//cv::Rect cleanRect = cv::Rect();
+	cv::Mat cleanImage = matchingMethod(matchi);
+	displayImage = cleanImage;
 	if (cleanImage.empty()) {
+		
 		statusMessage = "no trash found";
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		sendKeyPress(config.inventoryKey);
 		return;
 	}
-
+	
 	std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 
 	SetCursorPos(itThatPOINT.x, itThatPOINT.y); 
@@ -714,8 +694,9 @@ void Vision::useBuff(matchingEnum type)
 	cv::Mat buffImage;
 	if (type == SLOT) {
 		getDesktopMat();
-		cv::Rect slotRect = cv::Rect();
-		cv::Mat slotImage = matchingMethod(type, slotRect);
+		
+		cv::Mat slotImage = matchingMethod(type);
+		displayImage = slotImage;
 		if (!slotImage.empty()) { // this condition == if slotImage found
 			statusMessage = "trying to find food";
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -724,11 +705,13 @@ void Vision::useBuff(matchingEnum type)
 			sendKeyPress(config.inventoryKey);
 			std::this_thread::sleep_for(std::chrono::milliseconds(300));
 			getDesktopMat();
-
+			displayImage = buffImage;
 			if (config.usePie) {
-				cv::Rect pieRect = cv::Rect();
-				buffImage = matchingMethod(PIE, pieRect);
+				//cv::Rect pieRect = cv::Rect();
+				buffImage = matchingMethod(PIE);
+				//displayImage = buffImage;
 				if (buffImage.empty()) {
+					//statusMessage = "pie not found";
 					std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 					sendKeyPress(config.inventoryKey);
 					return;
@@ -736,9 +719,11 @@ void Vision::useBuff(matchingEnum type)
 
 			}
 			else {
-				cv::Rect saladRect = cv::Rect();
-				buffImage = matchingMethod(SALAD, saladRect);
+				//cv::Rect saladRect = cv::Rect();
+				buffImage = matchingMethod(SALAD);
+				//displayImage = buffImage;
 				if (buffImage.empty()) {
+					//statusMessage = "salad not found";
 					std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 					sendKeyPress(config.inventoryKey);
 					return;
@@ -804,8 +789,9 @@ void Vision::useBuff(matchingEnum type)
 		sendKeyPress(config.inventoryKey);
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
 		getDesktopMat();
-		cv::Rect baitRect = cv::Rect();
-		buffImage = matchingMethod(BAIT, baitRect);
+		//cv::Rect baitRect = cv::Rect();
+		buffImage = matchingMethod(BAIT);
+		displayImage = buffImage;
 		if (buffImage.empty()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 			sendKeyPress(config.inventoryKey);
@@ -821,8 +807,9 @@ void Vision::useBuff(matchingEnum type)
 		getDesktopMat();
 
 		
-		cv::Rect usebRect = cv::Rect();
-		buffImage = matchingMethod(USEBUTTON, usebRect);
+		//cv::Rect usebRect = cv::Rect();
+		buffImage = matchingMethod(USEBUTTON);
+		//displayImage = buffImage;
 		if (buffImage.empty()) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 			sendKeyPress(config.inventoryKey);
@@ -842,12 +829,13 @@ void Vision::useBuff(matchingEnum type)
 
 	}
 
+	
 }
 
 bool Vision::checkRestart() { 
 	
-	cv::Rect logoRect = cv::Rect();
-	cv::Mat logoImage = matchingMethod(MAINLOGO, logoRect);
+	//cv::Rect logoRect = cv::Rect();
+	cv::Mat logoImage = matchingMethod(MAINLOGO);
 	if (logoImage.empty()) {
 		
 		return false;
@@ -877,18 +865,15 @@ void Vision::debugWindow() {
 	ImGui::Begin("View", NULL, config.flazhoks);
 	ImGui::Text(statusMessage.c_str());
 	
-	if (status != CATCH) {
-		ImGui::Image(imguiTexture, ImVec2(config.areaRadius, config.areaRadius));
-	}
-	else {
-		ImGui::Image(imguiTexture, ImVec2(scaleRect.width, scaleRect.height));
-	}
+	ImGui::Image(imguiTexture, ImVec2(displayImage.cols, displayImage.rows));
+	
+	
 	ImGui::TextDisabled("(?)");
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("if value more than 360 fishing stops");
+		ImGui::SetTooltip("if timer reaches 0 fishing stops\n resets every cycle");
 	}
 	ImGui::SameLine();
-	std::string errorTimer = "error timer: " + std::to_string(duration);
+	std::string errorTimer = "error timer: " + std::to_string(360 - duration);
 	ImGui::Text(errorTimer.c_str());
 
 	
@@ -898,15 +883,18 @@ void Vision::debugWindow() {
 
 void Vision::RestartingP1() { 
 	
-	cv::Rect noticeRect = cv::Rect();
-	cv::Mat noticeMat = matchingMethod(SERVERNOTICE, noticeRect);
+	//cv::Rect noticeRect = cv::Rect();
+	cv::Mat noticeMat = matchingMethod(SERVERNOTICE);
 	if (!noticeMat.empty()) {
+		displayImage = noticeMat;
 		statusMessage = "notice found, sleeping for 4 minutes";
 		std::this_thread::sleep_for(std::chrono::minutes(4));
 	}
-	cv::Rect loginRect = cv::Rect();
-	cv::Mat loginMat = matchingMethod(LOGINBUTTON, loginRect);
+	
+	//cv::Rect loginRect = cv::Rect();
+	cv::Mat loginMat = matchingMethod(LOGINBUTTON);
 	if (!loginMat.empty()) {
+		displayImage = loginMat;
 		statusMessage = "Login found";
 		std::this_thread::sleep_for(std::chrono::milliseconds(2050));
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
@@ -914,16 +902,16 @@ void Vision::RestartingP1() {
 		pressKeyMouseLeft(12);
 		std::this_thread::sleep_for(std::chrono::seconds(20)); //after login button clicked
 	}
-
 	
 }
 
 bool Vision::okWindowCheck() 
 {
 	getDesktopMat();
-	cv::Rect okRect = cv::Rect();
-	cv::Mat okMat = matchingMethod(OKBUTTON, okRect);
+	//cv::Rect okRect = cv::Rect();
+	cv::Mat okMat = matchingMethod(OKBUTTON);
 	if (!okMat.empty()) {
+		displayImage = okMat;
 		statusMessage = "OK button found";
 		std::this_thread::sleep_for(std::chrono::milliseconds(2050));
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
@@ -939,9 +927,10 @@ bool Vision::okWindowCheck()
 void Vision::RestartingP2() 
 {
 	getDesktopMat();
-	cv::Rect enterWorldRect = cv::Rect();
-	cv::Mat enterWorldMat = matchingMethod(ENTERWORLDBUTTON, enterWorldRect);
+	//cv::Rect enterWorldRect = cv::Rect();
+	cv::Mat enterWorldMat = matchingMethod(ENTERWORLDBUTTON);
 	if (!enterWorldMat.empty()) {
+		displayImage = enterWorldMat;
 		statusMessage = "EnterWorld found";
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
@@ -960,4 +949,21 @@ void Vision::RestartingP2()
 
 	}
 	
+}
+
+cv::Mat Vision::getTemplateInTemplate(matchingEnum backTemplate, matchingEnum frontTemplate, cv::Rect& backRect)
+{
+	cv::Mat backImage = matchingMethod(backTemplate, cv::Mat(), &backRect);
+	if (backImage.empty()) {
+		return cv::Mat();
+	}
+	displayImage = backImage;
+	cv::Mat frontImage = matchingMethod(frontTemplate, backImage);
+	if (frontImage.empty()) {
+		return cv::Mat();
+	}
+	
+	cv::rectangle(displayImage, foundRect, cv::Scalar(0, 0, 255, 255), 2);
+
+	return frontImage;
 }
