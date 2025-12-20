@@ -26,6 +26,7 @@ Vision::~Vision()
 }
 void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit) {
 
+	gdiInitialized = false;
 	if (config.windowedCapture) {
 		targetHWND = FindWindowA(nullptr, "Albion Online Client");
 		
@@ -43,6 +44,9 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 		buffsActive = true;
 		if(config.usePie || config.useSalad)
 		   timeFoodStart = clockStart;
+	}
+	else {
+		buffsActive = false;
 	}
 
 	
@@ -365,7 +369,7 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 			selectedArea.bottom = cursorPos.y + config.areaRadius / 2;
 			break;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 	isAreaSelected = fihingState.load();
 }
