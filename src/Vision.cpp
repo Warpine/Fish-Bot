@@ -6,9 +6,6 @@
 
 
 Vision::Vision(Config& config) : config(config) {
-	if (!init) {
-		initWindow();
-	}
 	
 }
 Vision::~Vision()
@@ -21,15 +18,22 @@ Vision::~Vision()
 		DeleteDC(memoryDeviceContext);
 		memoryDeviceContext = nullptr;
 	}
-	if (windowDesk && deviceContext) {
-		ReleaseDC(windowDesk, deviceContext);
+	if (targetHWND && deviceContext) {
+		ReleaseDC(targetHWND, deviceContext);
 		deviceContext = nullptr;
 	}
 
 }
 void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit) {
 
-	
+	if (config.windowedCapture) {
+		targetHWND = FindWindowA(nullptr, "Albion Online Client");
+		
+	}
+	else {
+		targetHWND = GetDesktopWindow();
+	}
+
 	if (!isAreaSelected) {
 		selectAreaWithMouse(fihingState);
 	}
@@ -40,6 +44,8 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 		if(config.usePie || config.useSalad)
 		   timeFoodStart = clockStart;
 	}
+
+	
 	
 	while (fihingState.load())
 	{
@@ -64,7 +70,7 @@ void Vision::CaptureFih()
 			clockStart = std::chrono::high_resolution_clock::now();
 		}
 
-		getDesktopMat();
+		
 		getImage();
 
 		statusMessage = "thrown";
@@ -78,7 +84,7 @@ void Vision::CaptureFih()
 		std::this_thread::sleep_for(std::chrono::milliseconds(650));
 		
 		
-		getDesktopMat();
+		
 		getImage();
 
 		
@@ -95,7 +101,7 @@ void Vision::CaptureFih()
 	case FOUND:
 		statusMessage = "found and watching";
 		
-		getDesktopMat();
+		
 		getImage();
 		
 		std::cout << boundRect.area() << std::endl;
@@ -113,7 +119,8 @@ void Vision::CaptureFih()
 	case CATCH:
 		statusMessage = "catching";
 		
-		getDesktopMat();
+		
+
 		img = getTemplateInTemplate(SCALE, BOBBERINSCALE, scaleRect);
 		
 
@@ -153,7 +160,6 @@ void Vision::CaptureFih()
 		if (checkRestart()) { break; } 
 		if (config.cycles != NULL) {
 			cleanCounter++;
-
 			if (cleanCounter == config.cycles) {
 				statusMessage = "cleaning";
 
@@ -257,7 +263,7 @@ void Vision::stopCapture()
 	}
 	if (bitmap)              DeleteObject(bitmap);
 	if (memoryDeviceContext) DeleteDC(memoryDeviceContext);
-	if (deviceContext)       ReleaseDC(windowDesk, deviceContext);
+	if (deviceContext)       ReleaseDC(targetHWND, deviceContext);
 	status = STARTED;
 	statusMessage = "stopped";
 	isAreaSelected = false;
@@ -303,15 +309,9 @@ void Vision::sendKeyPress(int keyCode) {
 	SendInput(1, &input, sizeof(INPUT));
 }
 
-bool Vision::initWindow() {
-	windowDesk = GetDesktopWindow();
-	init = true;
-	return init;
-}
-
 void Vision::getDesktopMat() {
 	if (!gdiInitialized) {
-		deviceContext = GetDC(windowDesk);
+		deviceContext = GetDC(targetHWND);
 		if (!deviceContext) return;
 		memoryDeviceContext = CreateCompatibleDC(deviceContext);
 
@@ -354,7 +354,7 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 			if (!fihingState.load()) break;
 
 			GetCursorPos(&cursorPos);
-			ScreenToClient(windowDesk, &cursorPos);
+			ScreenToClient(targetHWND, &cursorPos);
 
 			itThatRemember = cursorPos;
 
@@ -407,7 +407,12 @@ void Vision::getMaskColorBased(cv::Mat& imgMask, objType type) {
 
 void Vision::getImage() {
 	
-	
+	if (config.windowedCapture) {
+		getWindowMat();
+	}
+	else {
+		getDesktopMat();
+	}
 
 	static int minVal = 40;
 
@@ -953,6 +958,12 @@ void Vision::RestartingP2()
 
 cv::Mat Vision::getTemplateInTemplate(matchingEnum backTemplate, matchingEnum frontTemplate, cv::Rect& backRect)
 {
+	if (config.windowedCapture) {
+		getWindowMat();
+	}
+	else {
+		getDesktopMat();
+	}
 	cv::Mat backImage = matchingMethod(backTemplate, cv::Mat(), &backRect);
 	if (backImage.empty()) {
 		return cv::Mat();
@@ -966,4 +977,44 @@ cv::Mat Vision::getTemplateInTemplate(matchingEnum backTemplate, matchingEnum fr
 	cv::rectangle(displayImage, foundRect, cv::Scalar(0, 0, 255, 255), 2);
 
 	return frontImage;
+}
+
+void Vision::getWindowMat() {
+
+	//if (!targetWindow || !IsWindow(targetWindow)) return;
+
+	if (!gdiInitialized) {
+		
+		
+		RECT windowRect;
+		GetClientRect(targetHWND, &windowRect);  
+		
+
+		windowWidth = windowRect.right - windowRect.left;
+		windowHeight = windowRect.bottom - windowRect.top;
+
+		if (screenWidth <= 0 || screenHeight <= 0) return;
+
+		
+		deviceContext = GetDC(targetHWND);
+		if (!deviceContext) return;
+
+		memoryDeviceContext = CreateCompatibleDC(deviceContext);
+
+		BITMAPINFO bmi = { 0 };
+		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		bmi.bmiHeader.biWidth = screenWidth;
+		bmi.bmiHeader.biHeight = -screenHeight;  // Top-down DIB
+		bmi.bmiHeader.biPlanes = 1;
+		bmi.bmiHeader.biBitCount = 32;
+		bmi.bmiHeader.biCompression = BI_RGB;
+
+		void* pBits = nullptr;
+		bitmap = CreateDIBSection(memoryDeviceContext, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+		SelectObject(memoryDeviceContext, bitmap);
+
+		fullScale = cv::Mat(screenHeight, screenWidth, CV_8UC4, pBits);
+		gdiInitialized = true;
+	}
+	BOOL result = PrintWindow(targetHWND, memoryDeviceContext, PW_RENDERFULLCONTENT);
 }

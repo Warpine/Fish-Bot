@@ -45,13 +45,16 @@ private:
 	std::string statusMessage = "never started";
 	const std::string winName = "Debug Window";
 
-
+	
 	//for getDesktopMat
 	HDC deviceContext = nullptr;
 	HDC memoryDeviceContext = nullptr;
 	HBITMAP bitmap = nullptr;
 	BITMAPINFOHEADER bi;
 	bool gdiInitialized = false;
+	
+	int windowWidth;
+	int windowHeight;
 	
 	//used in getDesktopMat
 	cv::Mat fullScale = cv::Mat();
@@ -76,8 +79,8 @@ private:
 	//used in initWindow
 	bool init = false;
 	//used in initWindow
-	HWND windowDesk = nullptr;
-
+	HWND targetHWND = nullptr;
+	//HWND targetWindow = nullptr;
 	//used in selectAreaWithMouse
 	::RECT selectedArea = { 0 };
 	bool isAreaSelected = false;
@@ -202,7 +205,7 @@ private:
 	void pressKeyMouseLeft(int KeyUpMillisec);
 	void sendKeyPress(int keyCode);
 	
-	bool initWindow();
+	
 	void getDesktopMat();
 	void selectAreaWithMouse(std::atomic<bool>& fihingState); //idk
 	cv::Mat cropMat();
@@ -223,7 +226,7 @@ private:
 	void RestartingP2();
 	cv::Mat getTemplateInTemplate(matchingEnum backTemplate, matchingEnum frontTemplate, cv::Rect& backRect);
 	//void getImageInImage(matchingEnum firstImage, matchingEnum secondTemplate);
-
+	void getWindowMat();
 	
 public:
 	bool getSelectAreaState();

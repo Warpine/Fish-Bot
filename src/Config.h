@@ -27,6 +27,7 @@ public:
 	bool useSalad;
 	bool usePie;
 	bool useBait;
+	bool windowedCapture;
 
 	int cycles;
 	int throwTimeMs;
@@ -50,6 +51,7 @@ public:
 		ini.SetBoolValue("Bools", "usePie", usePie);
 		ini.SetBoolValue("Bools", "useSalad", useSalad);
 		ini.SetBoolValue("Bools", "useBait", useBait);
+		ini.SetBoolValue("Bools", "windowedCapture", windowedCapture);
 		SI_Error rc = ini.SaveFile(filename);
 	}
 
@@ -61,18 +63,19 @@ public:
 		}
 
 		
-		fihKey =       ini.GetLongValue("Keys", "fihKey");
-		stopFihKey =   ini.GetLongValue("Keys", "stopFihKey");
-		inventoryKey = ini.GetLongValue("Keys", "inventoryKey");
-		foodKey =      ini.GetLongValue("Keys", "foodKey");
+		fihKey =          ini.GetLongValue("Keys", "fihKey");
+		stopFihKey =      ini.GetLongValue("Keys", "stopFihKey");
+		inventoryKey =    ini.GetLongValue("Keys", "inventoryKey");
+		foodKey =         ini.GetLongValue("Keys", "foodKey");
 
-		throwTimeMs =  ini.GetLongValue("Values", "throwTimeMs");
-		areaRadius =   ini.GetLongValue("Values", "areaRadius");
-		cycles =       ini.GetLongValue("Values", "cycles");
+		throwTimeMs =     ini.GetLongValue("Values", "throwTimeMs");
+		areaRadius =      ini.GetLongValue("Values", "areaRadius");
+		cycles =          ini.GetLongValue("Values", "cycles");
 
-		usePie =       ini.GetBoolValue("Bools", "usePie");
-		useSalad =     ini.GetBoolValue("Bools", "useSalad");
-		useBait =      ini.GetBoolValue("Bools", "useBait");
+		usePie =          ini.GetBoolValue("Bools", "usePie");
+		useSalad =        ini.GetBoolValue("Bools", "useSalad");
+		useBait =         ini.GetBoolValue("Bools", "useBait");
+		windowedCapture = ini.GetBoolValue("Bools", "windowedCapture");
 	}
 
 	void window(bool& bindsOpen) {
@@ -141,6 +144,11 @@ public:
 		ImGui::Checkbox("Use Bait", &useBait);
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("Uses any tier bait");
+		}
+
+		ImGui::Checkbox("Windowed?", &windowedCapture);
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Can capture window or fullscreen\n fullscreen by default");
 		}
 
 		if (ImGui::Button("Save Settings")) { saveConfig(); }
