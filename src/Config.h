@@ -28,6 +28,8 @@ public:
 	bool usePie;
 	bool useBait;
 	bool windowedCapture;
+	//bool gdiMustChange = false;
+	bool lowResolution = false;
 
 	int cycles;
 	int throwTimeMs;
@@ -36,6 +38,7 @@ public:
 	int stopFihKey;
 	int inventoryKey;
 	int foodKey;
+	char idBuff[16] = "";
 
 	void saveConfig() {
 
@@ -52,6 +55,10 @@ public:
 		ini.SetBoolValue("Bools", "useSalad", useSalad);
 		ini.SetBoolValue("Bools", "useBait", useBait);
 		ini.SetBoolValue("Bools", "windowedCapture", windowedCapture);
+		ini.SetBoolValue("Bools", "lowResolution", lowResolution);
+
+		ini.SetValue("Strings", "Id", idBuff);
+
 		SI_Error rc = ini.SaveFile(filename);
 	}
 
@@ -76,6 +83,13 @@ public:
 		useSalad =        ini.GetBoolValue("Bools", "useSalad");
 		useBait =         ini.GetBoolValue("Bools", "useBait");
 		windowedCapture = ini.GetBoolValue("Bools", "windowedCapture");
+		lowResolution =   ini.GetBoolValue("Bools", "lowResolution");
+
+		const char* idBuffconst = ini.GetValue("Strings", "Id");
+		strncpy_s(idBuff, idBuffconst, sizeof(idBuff));
+		//idBuff[sizeof(idBuff-1)] = '\0';
+		//ini.SetUnicode(true);
+		//buf = ini.GetValue("Strings", "Id");
 	}
 
 	void window(bool& bindsOpen) {
@@ -123,7 +137,7 @@ public:
 		//slider throwCount
 		ImGui::TextDisabled("(?)");
 		if (ImGui::IsItemHovered()) {
-			std::string throwTooltip = "Cleanup inventory from logs each " + std::to_string(cycles) + " fishing cycles \nif set to zero = cleanup disabled\nDefault value = 50";
+			std::string throwTooltip = "Cleanup inventory from logs and stones each " + std::to_string(cycles) + " fishing cycles \nif set to zero = cleanup disabled\nDefault value = 30";
 			ImGui::SetTooltip(throwTooltip.c_str());
 		}
 		ImGui::SameLine();
@@ -146,10 +160,29 @@ public:
 			ImGui::SetTooltip("Uses any tier bait");
 		}
 
-		ImGui::Checkbox("Windowed?", &windowedCapture);
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Can capture window or fullscreen\n fullscreen by default");
+		//ImGui::Checkbox("Windowed", &windowedCapture);
+		ImGui::Text("Capture mode: ");
+		if (ImGui::RadioButton("Fullscreen", !windowedCapture)) {
+			windowedCapture = false;
+			
 		}
+		ImGui::SameLine();
+		if (ImGui::RadioButton("Windowed", windowedCapture)) {
+			windowedCapture = true;
+			
+		}
+		ImGui::Text("Resolution: ");
+		if (ImGui::RadioButton("1920x1080", !lowResolution)) {
+			lowResolution = false;
+			
+		}
+		ImGui::SameLine();
+		if (ImGui::RadioButton("1024x768", lowResolution)) {
+			lowResolution = true;
+			
+		}
+		
+		
 
 		if (ImGui::Button("Save Settings")) { saveConfig(); }
 		if (ImGui::IsItemHovered()) {
@@ -166,10 +199,12 @@ private:
 		foodKey = '2';
 		areaRadius = 200;
 		throwTimeMs = 350;
-		cycles = 50;
+		cycles = 30;
 		useSalad = false;
 		usePie = false;
 		useBait = false;
+		windowedCapture = false;
+		lowResolution = false;
 		saveConfig();
 	}
 	void Hotkey(int* k, bool& button, const ImVec2& size_arg = ImVec2(0, 0))

@@ -2,6 +2,7 @@
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
 
+#include"tgbot/tgbot.h"
 #include<Windows.h>
 #include<dwmapi.h>
 #include<d3d11.h>
@@ -13,7 +14,12 @@
 #include<imgui/imgui_impl_dx11.h>
 #include<imgui/imgui_impl_win32.h>
 
+TgBot::Bot bot("8453817061:AAFzZ0Xl6C8VivHLaw_V6bcb7Io1Uf0Mw6k");
 
+#include"Config.h"
+#include"Notifier.h"
+#include"Vision.h"
+#include"Utility.h"
 #include"Login.h"
 
 //debug
@@ -23,7 +29,8 @@
 #include <fcntl.h>
 #include <stdio.h>
 //debug
-
+//#include <shellscalingapi.h>
+//#pragma comment(lib, "Shcore.lib")
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
@@ -60,7 +67,7 @@ ImGuiStyle SetupImGuiStyle();
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-
+//TgBot::Bot bot("8453817061:AAFzZ0Xl6C8VivHLaw_V6bcb7Io1Uf0Mw6k");
 std::thread run;
 // do NOT remove checkAuthenticated(), it MUST stay for security reasons
 std::thread check; // do NOT remove this function either.
@@ -68,18 +75,21 @@ std::thread check; // do NOT remove this function either.
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	
 	
-	
+	//SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+	//screenWidth = GetSystemMetrics(SM_CXSCREEN);
+	//screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
 	
 
-	//CreateConsole();
-	//std::cout << "test" << std::endl;
+	CreateConsole();
+	std::cout << "test" << std::endl;
 	
 	
 	config.loadConfig();
-
+	//Notifier::brokenMessage(bot, config.idBuff);
 	//window
 	//HICON hIcon = LoadIconWithScaleDown(NULL, L"src/fih.png", IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
 	HICON hIcon = (HICON)LoadImage(NULL, L"src/fih.ico", IMAGE_ICON, 256, 256, LR_LOADFROMFILE);
@@ -157,6 +167,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	//main loop
 	while (!state.shouldExit.load())
 	{
+		
 		MSG msg;
 		while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
 		{
@@ -196,7 +207,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		if (isLogged.load()) {
 			
 		    state.manage();
-
+			
 
 		   if (state.fihing.load()) {
 
@@ -213,6 +224,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 				vizu.duration = std::chrono::duration_cast<std::chrono::seconds>(clockEnd - vizu.clockStart).count();
 				if (vizu.duration >= 360) {
 					state.fihing = false;
+					Notifier::brokenMessage(bot ,config.idBuff);
 				}
 			  }
 
@@ -220,9 +232,11 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		   else {
 			  if (state.fishingThread.joinable()) {
 				state.fishingThread.join();
+				vizu.duration = 0;
 			  }
 
 		   }
+
 	    }
 		else {
 			AuthorizationWindow();
@@ -260,6 +274,9 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	}
 	if (check.joinable()) {
 		check.detach();
+	}
+	if (state.tgBotThread.joinable()) {
+		state.tgBotThread.detach();
 	}
 	
 

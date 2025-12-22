@@ -1,4 +1,5 @@
 #pragma once
+
 #include<opencv2/imgcodecs.hpp>
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
@@ -9,7 +10,10 @@
 
 #include"Config.h"
 
+//#include <shellscalingapi.h>
+//#pragma comment(lib, "Shcore.lib")
 
+//SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
  //mb need to create globalVar header
 const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
@@ -43,7 +47,6 @@ private:
 	Microsoft::WRL::ComPtr <ID3D11ShaderResourceView> textureSRV = nullptr;
 	static inline ImTextureID imguiTexture = NULL;
 	std::string statusMessage = "never started";
-	const std::string winName = "Debug Window";
 
 	
 	//for getDesktopMat
@@ -72,9 +75,9 @@ private:
 	static inline INPUT inputCatch = { 0 };
 	
 	//used in catchProcess
-	const int scalePosDOWN = 135;
+	int scalePosDOWN = 135;
 	//used in catchProcess
-	const int scalePosUP = 150;
+	int scalePosUP = 150;
 
 	//used in initWindow
 	bool init = false;
@@ -102,11 +105,12 @@ private:
 	std::vector<std::vector<cv::Point>> contours;
 	//used in getImage and area comparsion for logic control
 	cv::Rect boundRect = cv::Rect();
+	//это для 1920x1080
 	//c высоты  800-875   ---- клюнуло  209-450
 	//с средней 1500-1700 ---- клюнуло  252-644
 	//c низов   2400-2900 ---- клюнуло  546-975
-	const int inWaterSizeMin = 1500;
-	const int inScaleSize = 60;
+	//актуальное записано в симпленоте с гаус блюром
+	int inWaterSizeMin;
 	
 	bool buffsActive = false;
 	std::chrono::steady_clock::time_point timeFoodStart;
@@ -159,7 +163,7 @@ private:
 		171
 	};
     
-	const std::vector<cv::Mat> matchingTempl = {
+	std::vector<cv::Mat> matchingTempl = {
 		cv::imread("src/scale.png", cv::IMREAD_COLOR),
 		cv::imread("src/chickenPie.png", cv::IMREAD_COLOR),
 		cv::imread("src/salad.png", cv::IMREAD_COLOR),
@@ -206,7 +210,7 @@ private:
 	void sendKeyPress(int keyCode);
 	
 	
-	void getDesktopMat();
+	//void getDesktopMat();
 	void selectAreaWithMouse(std::atomic<bool>& fihingState); //idk
 	cv::Mat cropMat();
 	void getMaskColorBased(cv::Mat& imgMask, objType type);
@@ -227,6 +231,8 @@ private:
 	cv::Mat getTemplateInTemplate(matchingEnum backTemplate, matchingEnum frontTemplate, cv::Rect& backRect);
 	//void getImageInImage(matchingEnum firstImage, matchingEnum secondTemplate);
 	void getWindowMat();
+
+	
 	
 public:
 	bool getSelectAreaState();

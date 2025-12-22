@@ -26,13 +26,60 @@ Vision::~Vision()
 }
 void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit) {
 
-	gdiInitialized = false;
+
 	if (config.windowedCapture) {
 		targetHWND = FindWindowA(nullptr, "Albion Online Client");
 		
 	}
 	else {
 		targetHWND = GetDesktopWindow();
+	}
+
+	if (config.lowResolution) {
+		inWaterSizeMin = 300;
+		scalePosDOWN = 112;
+		scalePosUP = 122;
+		matchingTempl = {
+		cv::imread("images/1024x768/scale.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/chickenPie.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/salad.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/t1bait.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/logs.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/slot.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/mainLogo.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/loginButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/enterWorldButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/useButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/yesButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/serverNotice.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/okButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/stone.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/closeButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1024x768/coolFloat.png", cv::IMREAD_COLOR)
+		};
+	}
+	else {
+		inWaterSizeMin = 480;
+		scalePosDOWN = 135;
+		scalePosUP = 150;
+		matchingTempl = {
+		cv::imread("images/1920x1080/scale.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/chickenPie.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/salad.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/t1bait.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/logs.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/slot.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/mainLogo.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/loginButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/enterWorldButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/useButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/yesButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/serverNotice.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/okButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/stone.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/closeButton.png", cv::IMREAD_COLOR),
+		cv::imread("images/1920x1080/coolFloat.png", cv::IMREAD_COLOR)
+		};
 	}
 
 	if (!isAreaSelected) {
@@ -85,22 +132,19 @@ void Vision::CaptureFih()
 	case LOOKING:
 
 		statusMessage = "looking for bobber";
-		std::this_thread::sleep_for(std::chrono::milliseconds(650));
-		
-		
 		
 		getImage();
 
 		
-		std::cout << boundRect.area() << std::endl;
+		//std::cout << boundRect.area() << std::endl;
 		if (boundRect.area() >= inWaterSizeMin) {
 			if (checkRestart()) { break; }
 			status = FOUND;
 			
 			break;
 		}
-		
 		if (checkRestart()) { break; }
+		
 		break;
 	case FOUND:
 		statusMessage = "found and watching";
@@ -108,8 +152,8 @@ void Vision::CaptureFih()
 		
 		getImage();
 		
-		std::cout << boundRect.area() << std::endl;
-		if (boundRect.area() < inWaterSizeMin /* || rectSizeDifference >= rectSizeTreshold */ ) {
+		//std::cout << boundRect.area() << std::endl;
+		if (boundRect.area() < inWaterSizeMin ) {
 			status = CATCH;
 			if (checkRestart()) { break; }
 			pressKeyMouseLeft(10);
@@ -262,21 +306,21 @@ void Vision::catchProcess() {
 	
 void Vision::stopCapture()
 {
-	if (cv::getWindowProperty(winName, cv::WND_PROP_VISIBLE) > 0) {
-		cv::destroyWindow(winName);
-	}
+	statusMessage = "stopped";
+	
 	if (bitmap)              DeleteObject(bitmap);
 	if (memoryDeviceContext) DeleteDC(memoryDeviceContext);
 	if (deviceContext)       ReleaseDC(targetHWND, deviceContext);
 	status = STARTED;
-	statusMessage = "stopped";
 	isAreaSelected = false;
 	buffsActive = false;
 	gdiInitialized = false;
 	itThatRemember = POINT();
 	cleanCounter = 0;
+	baitCounter = 0;
 	cropRect = cv::Rect();
-	scaleRect = cv::Rect(); 
+	scaleRect = cv::Rect();
+
 }
 
 void Vision::pressKeyMouseLeft(int KeyUpMillisec) {
@@ -313,35 +357,35 @@ void Vision::sendKeyPress(int keyCode) {
 	SendInput(1, &input, sizeof(INPUT));
 }
 
-void Vision::getDesktopMat() {
-	if (!gdiInitialized) {
-		deviceContext = GetDC(targetHWND);
-		if (!deviceContext) return;
-		memoryDeviceContext = CreateCompatibleDC(deviceContext);
-
-		
-		BITMAPINFO bmi = { 0 }; //specify format by using bitmap info header
-		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-		bmi.bmiHeader.biWidth = screenWidth;
-		bmi.bmiHeader.biHeight = -screenHeight;
-		bmi.bmiHeader.biPlanes = 1;
-		bmi.bmiHeader.biBitCount = 32;
-		bmi.bmiHeader.biCompression = BI_RGB;
-
-		void* pBits = nullptr;
-		bitmap = CreateDIBSection(memoryDeviceContext, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
-		SelectObject(memoryDeviceContext, bitmap);
-
-		//straight use of bitmap data
-		fullScale = cv::Mat(screenHeight, screenWidth, CV_8UC4, pBits);
-		gdiInitialized = true;
-	}
-	
-	//copy data into the bitmap
-	BitBlt(memoryDeviceContext, 0, 0, screenWidth, screenHeight, deviceContext, 0, 0, SRCCOPY);
-
-	
-}
+//void Vision::getDesktopMat() {
+//	if (!gdiInitialized) {
+//		deviceContext = GetDC(targetHWND);
+//		if (!deviceContext) return;
+//		memoryDeviceContext = CreateCompatibleDC(deviceContext);
+//
+//		
+//		BITMAPINFO bmi = { 0 }; //specify format by using bitmap info header
+//		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+//		bmi.bmiHeader.biWidth = screenWidth;
+//		bmi.bmiHeader.biHeight = -screenHeight;
+//		bmi.bmiHeader.biPlanes = 1;
+//		bmi.bmiHeader.biBitCount = 32;
+//		bmi.bmiHeader.biCompression = BI_RGB;
+//
+//		void* pBits = nullptr;
+//		bitmap = CreateDIBSection(memoryDeviceContext, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+//		SelectObject(memoryDeviceContext, bitmap);
+//
+//		//straight use of bitmap data
+//		fullScale = cv::Mat(screenHeight, screenWidth, CV_8UC4, pBits);
+//		gdiInitialized = true;
+//	}
+//	
+//	//copy data into the bitmap
+//	BitBlt(memoryDeviceContext, 0, 0, screenWidth, screenHeight, deviceContext, 0, 0, SRCCOPY);
+//
+//	
+//}
 
 void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 
@@ -411,21 +455,15 @@ void Vision::getMaskColorBased(cv::Mat& imgMask, objType type) {
 
 void Vision::getImage() {
 	
-	if (config.windowedCapture) {
-		getWindowMat();
-	}
-	else {
-		getDesktopMat();
-	}
+	
+	getWindowMat();
+	
+	int countersMinVal = 40;
 
-	static int minVal = 40;
-
-	if (status != CATCH) {
-		img = cropMat();
-	}
-	else {
-		img = matchingMethod(SCALE);
-	}
+	
+	img = cropMat();
+	
+	
 	
 	if (img.empty()) {
 		
@@ -437,7 +475,7 @@ void Vision::getImage() {
 
 	
 	cv::Mat blurred;
-	GaussianBlur(imgMask, blurred, cv::Size(3, 3), 0);
+	GaussianBlur(imgMask, blurred, cv::Size(5, 5), 0);
 
 	//find countour
 	findContours(blurred, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
@@ -453,7 +491,7 @@ void Vision::getImage() {
 
 		double area = cv::contourArea(contours[i]);
 
-		if (area < minVal) {
+		if (area < countersMinVal) {
 			continue;
 		}
 		if (area > maxArea) {
@@ -467,22 +505,18 @@ void Vision::getImage() {
 	//find rect for bobber
 	if (maxAreaIdx >= 0) {
 		boundRect = cv::boundingRect(contours[maxAreaIdx]);
-		//std::cout << boundRect.area() << std::endl;
+		std::cout << boundRect.area() << std::endl;
 		
-		if (status != CATCH) {
-			if (boundRect.area() >= inWaterSizeMin) {
+		
+		if (boundRect.area() >= inWaterSizeMin) {
 				
 				
-				cv::rectangle(displayImage, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
+			cv::rectangle(displayImage, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
 				
-			}
+		}
 
-		}
-		else {
-			if (boundRect.area() < inWaterSizeMin && boundRect.area() >= inScaleSize) {
-				cv::rectangle(displayImage, boundRect.tl(), boundRect.br(), cv::Scalar(0, 0, 255, 255), 3);
-			}
-		}
+		
+		
 	}
 	
 
@@ -498,7 +532,7 @@ void Vision::getImage() {
 cv::Mat Vision::matchingMethod(matchingEnum type, cv::Mat fullMat, cv::Rect* storedRect)
 {
 	if (fullMat.empty()) {
-		fullMat = fullScale;
+		fullMat = fullScale.clone();
 	}
 
 	if(storedRect != nullptr && !storedRect->empty())
@@ -650,7 +684,10 @@ void Vision::cleanInventory(matchingEnum matchi)
 	//start
 	//sendKeyPress(config.inventoryKey);
 	//std::this_thread::sleep_for(std::chrono::milliseconds(1300));
-	getDesktopMat();
+	
+	getWindowMat();
+	
+	
 	//
 	//cv::Rect cleanRect = cv::Rect();
 	cv::Mat cleanImage = matchingMethod(matchi);
@@ -702,7 +739,10 @@ void Vision::useBuff(matchingEnum type)
 	
 	cv::Mat buffImage;
 	if (type == SLOT) {
-		getDesktopMat();
+		
+		getWindowMat();
+		
+		
 		
 		cv::Mat slotImage = matchingMethod(type);
 		displayImage = slotImage;
@@ -713,7 +753,10 @@ void Vision::useBuff(matchingEnum type)
 
 			sendKeyPress(config.inventoryKey);
 			std::this_thread::sleep_for(std::chrono::milliseconds(300));
-			getDesktopMat();
+		    
+			getWindowMat();
+			
+			
 			displayImage = buffImage;
 			if (config.usePie) {
 				//cv::Rect pieRect = cv::Rect();
@@ -797,7 +840,10 @@ void Vision::useBuff(matchingEnum type)
 	else { //logic for bait here
 		sendKeyPress(config.inventoryKey);
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
-		getDesktopMat();
+		
+		getWindowMat();
+		
+		
 		//cv::Rect baitRect = cv::Rect();
 		buffImage = matchingMethod(BAIT);
 		displayImage = buffImage;
@@ -813,7 +859,10 @@ void Vision::useBuff(matchingEnum type)
 		std::this_thread::sleep_for(std::chrono::milliseconds(1300));
 		pressKeyMouseLeft(10);
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
-		getDesktopMat();
+		
+		getWindowMat();
+		
+		
 
 		
 		//cv::Rect usebRect = cv::Rect();
@@ -916,7 +965,11 @@ void Vision::RestartingP1() {
 
 bool Vision::okWindowCheck() 
 {
-	getDesktopMat();
+	
+	
+	getWindowMat();
+	
+	
 	//cv::Rect okRect = cv::Rect();
 	cv::Mat okMat = matchingMethod(OKBUTTON);
 	if (!okMat.empty()) {
@@ -935,7 +988,10 @@ bool Vision::okWindowCheck()
 
 void Vision::RestartingP2() 
 {
-	getDesktopMat();
+	
+	getWindowMat();
+	
+	
 	//cv::Rect enterWorldRect = cv::Rect();
 	cv::Mat enterWorldMat = matchingMethod(ENTERWORLDBUTTON);
 	if (!enterWorldMat.empty()) {
@@ -946,6 +1002,12 @@ void Vision::RestartingP2()
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		pressKeyMouseLeft(12);
 		std::this_thread::sleep_for(std::chrono::seconds(20));
+
+		
+		getWindowMat();
+		
+		
+		cv::Mat closeButton = matchingMethod(CLOSEBUTTONX);
 		INPUT mouseWheelUP = { 0 };
 		mouseWheelUP.type = INPUT_MOUSE;
 		mouseWheelUP.mi.dwFlags = MOUSEEVENTF_WHEEL;
@@ -962,12 +1024,10 @@ void Vision::RestartingP2()
 
 cv::Mat Vision::getTemplateInTemplate(matchingEnum backTemplate, matchingEnum frontTemplate, cv::Rect& backRect)
 {
-	if (config.windowedCapture) {
-		getWindowMat();
-	}
-	else {
-		getDesktopMat();
-	}
+	
+	getWindowMat();
+	
+	
 	cv::Mat backImage = matchingMethod(backTemplate, cv::Mat(), &backRect);
 	if (backImage.empty()) {
 		return cv::Mat();
@@ -985,40 +1045,71 @@ cv::Mat Vision::getTemplateInTemplate(matchingEnum backTemplate, matchingEnum fr
 
 void Vision::getWindowMat() {
 
-	//if (!targetWindow || !IsWindow(targetWindow)) return;
+	if (config.windowedCapture) {
 
-	if (!gdiInitialized) {
-		
-		
-		RECT windowRect;
-		GetClientRect(targetHWND, &windowRect);  
-		
 
-		windowWidth = windowRect.right - windowRect.left;
-		windowHeight = windowRect.bottom - windowRect.top;
+		if (!gdiInitialized) {
 
-		if (screenWidth <= 0 || screenHeight <= 0) return;
 
-		
-		deviceContext = GetDC(targetHWND);
-		if (!deviceContext) return;
+			RECT windowRect;
+			GetClientRect(targetHWND, &windowRect);
 
-		memoryDeviceContext = CreateCompatibleDC(deviceContext);
 
-		BITMAPINFO bmi = { 0 };
-		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-		bmi.bmiHeader.biWidth = screenWidth;
-		bmi.bmiHeader.biHeight = -screenHeight;  // Top-down DIB
-		bmi.bmiHeader.biPlanes = 1;
-		bmi.bmiHeader.biBitCount = 32;
-		bmi.bmiHeader.biCompression = BI_RGB;
+			windowWidth = windowRect.right - windowRect.left;
+			windowHeight = windowRect.bottom - windowRect.top;
 
-		void* pBits = nullptr;
-		bitmap = CreateDIBSection(memoryDeviceContext, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
-		SelectObject(memoryDeviceContext, bitmap);
+			if (windowWidth <= 0 || windowHeight <= 0) return;
 
-		fullScale = cv::Mat(screenHeight, screenWidth, CV_8UC4, pBits);
-		gdiInitialized = true;
+
+			deviceContext = GetDC(targetHWND);
+			if (!deviceContext) return;
+
+			memoryDeviceContext = CreateCompatibleDC(deviceContext);
+
+			BITMAPINFO bmi = { 0 };
+			bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+			bmi.bmiHeader.biWidth = windowWidth;
+			bmi.bmiHeader.biHeight = -windowHeight;  // Top-down DIB
+			bmi.bmiHeader.biPlanes = 1;
+			bmi.bmiHeader.biBitCount = 32;
+			bmi.bmiHeader.biCompression = BI_RGB;
+
+			void* pBits = nullptr;
+			bitmap = CreateDIBSection(memoryDeviceContext, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+			SelectObject(memoryDeviceContext, bitmap);
+
+			fullScale = cv::Mat(windowHeight, windowWidth, CV_8UC4, pBits);
+			gdiInitialized = true;
+		}
+		BOOL result = PrintWindow(targetHWND, memoryDeviceContext, PW_RENDERFULLCONTENT);
 	}
-	BOOL result = PrintWindow(targetHWND, memoryDeviceContext, PW_RENDERFULLCONTENT);
+	else {
+
+		if (!gdiInitialized) {
+			deviceContext = GetDC(targetHWND);
+			if (!deviceContext) return;
+			memoryDeviceContext = CreateCompatibleDC(deviceContext);
+
+
+			BITMAPINFO bmi = { 0 }; //specify format by using bitmap info header
+			bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+			bmi.bmiHeader.biWidth = screenWidth;
+			bmi.bmiHeader.biHeight = -screenHeight;
+			bmi.bmiHeader.biPlanes = 1;
+			bmi.bmiHeader.biBitCount = 32;
+			bmi.bmiHeader.biCompression = BI_RGB;
+
+			void* pBits = nullptr;
+			bitmap = CreateDIBSection(memoryDeviceContext, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+			SelectObject(memoryDeviceContext, bitmap);
+
+			//straight use of bitmap data
+			fullScale = cv::Mat(screenHeight, screenWidth, CV_8UC4, pBits);
+			gdiInitialized = true;
+		}
+
+		//copy data into the bitmap
+		BitBlt(memoryDeviceContext, 0, 0, screenWidth, screenHeight, deviceContext, 0, 0, SRCCOPY);
+	}
 }
+

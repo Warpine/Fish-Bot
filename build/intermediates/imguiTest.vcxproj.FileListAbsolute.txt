@@ -1,0 +1,6 @@
+E:\IT\repos\imguiTest\build\intermediates\imguiTest.vcxproj.Up2Date
+E:\IT\repos\imguiTest\build\TgBot.dll
+E:\IT\repos\imguiTest\build\libssl-3-x64.dll
+E:\IT\repos\imguiTest\build\libcrypto-3-x64.dll
+E:\IT\repos\imguiTest\build\libcurl.dll
+E:\IT\repos\imguiTest\build\zlib1.dll

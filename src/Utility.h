@@ -1,10 +1,9 @@
 #pragma once
 #include <imgui/imgui_impl_win32.h>
 
-#include"Config.h"
-#include"Vision.h"
+#include<thread>
 #include<keyauth/skStr.h>
-
+#include<fstream>
 
 
 
@@ -14,8 +13,9 @@ public:
 	
 	std::atomic<bool> shouldExit = false;
 	std::atomic<bool> fihing = false;
+	//std::atomic<bool> botAwareMessage = false;
 	std::thread fishingThread;
-	
+	std::thread tgBotThread;
 	
 private:
 	Vision& vision;
@@ -30,14 +30,16 @@ private:
 
 	bool showMainWin = true;
 	bool showHint = true;
-	bool debug = false;
+	bool view = false;
 	bool bindsOpen = false;
 	bool settingsOpen = false;
 	bool guideOpen = false;
 	bool guideEng = true;
-	
-	
+	bool botMenu = false;
+	bool tgRequest = false;
+
 public:
+
 	AppState(Config& cnf, Vision& vision) : config(cnf), vision(vision) {
 		guidelineEng = readFileToString("src/eng.txt");
 		guidelineRus = readFileToString("src/rus.txt");
@@ -45,6 +47,7 @@ public:
 	void setMainTitle(std::string title) {
 		windowTitle = "FihBot 1.0 " + title;
 	}
+	
 	void manage() {
 		
 		if (!fihing.load()) {
@@ -68,7 +71,7 @@ public:
 			ShowMainWindow();
 
 
-		if (debug)
+		if (view)
 			vision.debugWindow();
 		
 		
@@ -78,7 +81,7 @@ public:
 private:
 	void ShowMainWindow()
 	{
-		//ImGuiIO& io = ImGui::GetIO(); (void)io;
+		
 		ImGui::Begin(windowTitle.c_str(), 0, config.flazhoks);
 		
 		if (ImGui::Button("Guide", config.standartButton)) {
@@ -111,10 +114,34 @@ private:
 		
 
 		
-		ImGui::Checkbox("View", &debug);
+		ImGui::Checkbox("View", &view);
+		ImGui::Checkbox("TgBot menu", &botMenu);
+		
 		ImGui::SameLine(config.ButtonX * 2.5);
 		ImGui::Text(author2.c_str());
-		
+		if (botMenu) {
+			ImGui::Text("Id: "); ImGui::SameLine();
+			ImGui::PushItemWidth(100.0f);
+			ImGui::InputText(" ", config.idBuff, IM_ARRAYSIZE(config.idBuff));
+			ImGui::TextLinkOpenURL("TgBot URL", "https://t.me/KabaniyPromisel_bot");
+
+			ImGui::TextColored(ImVec4(255, 0, 0, 255), "WARNING that may freeze menu for about 20 seconds");
+			if (ImGui::RadioButton("Start Request", tgRequest)) {
+				tgRequest = true;
+				if (!tgBotThread.joinable()) {
+					tgBotThread = std::thread(Notifier::sendLongPollEvent, std::ref(bot));
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::RadioButton("Stop Request", !tgRequest)) {
+				tgRequest = false;
+				if (tgBotThread.joinable()) {
+					tgBotThread.join();
+				}
+			}
+			
+		}
+
 		ImGui::End();
 	}
 	void GuideWindow(){

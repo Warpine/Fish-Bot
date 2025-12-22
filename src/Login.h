@@ -6,7 +6,7 @@
 #include<imgui/imgui_impl_win32.h>
 
 //#include"Vision.h" 
-#include"Utility.h"
+//#include"Utility.h"
 //#include"Config.h"
 
 //globals header?
@@ -80,7 +80,7 @@ void keyAuthInit() {
 bool keySucces()
 {
 	
-	//ini.SetUnicode();
+	
 	SI_Error rc = iniKey.LoadFile(keyFilename);
 	if (rc < 0)
 	{
