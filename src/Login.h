@@ -24,11 +24,12 @@ AppState state(config, vizu);
 
 std::string name = skCrypt("Albion FihBot").decrypt(); // App name
 std::string ownerid = skCrypt("avFNTfvMb4").decrypt(); // Account ID
-std::string version = skCrypt("1.0").decrypt(); // Application version. Used for automatic downloads see video here https://www.youtube.com/watch?v=kW195PLCBKs
+std::string version = skCrypt("1.1").decrypt(); // Application version. Used for automatic downloads see video here 
 std::string url = skCrypt("https://keyauth.win/api/1.3/").decrypt(); // change if using KeyAuth custom domains feature
-std::string path = skCrypt("").decrypt(); // (OPTIONAL) see tutorial here https://www.youtube.com/watch?v=I9rxt821gMk&t=1s
+std::string path = skCrypt("").decrypt(); // (OPTIONAL) see tutorial here 
 
 KeyAuth::api KeyAuthApp(name, ownerid, version, url, path);
+
 std::atomic<bool> isLogged = false;
 char licenseBuffer[64] = "";
 
@@ -39,18 +40,23 @@ std::string username, password, key, TfaCode; // keep this before the auto-login
 CSimpleIniA iniKey;
 
 void sessionStatus() {
-	KeyAuthApp.check(); // do NOT specify true usually, it is slower and will get you blocked from API
-	if (!KeyAuthApp.response.success) {
-		exit(0);
-	}
+
+	//KeyAuthApp.check(); // do NOT specify true usually, it is slower and will get you blocked from API
+	//if (!KeyAuthApp.response.success) {
+	//	dffessageBoxA(NULL, KeyAuthApp.response.message.c_str(), "Error", MB_OK | MB_ICONERROR);
+	//	exit(1);
+	//}
 	
 	if (KeyAuthApp.response.isPaid) {
 		while (isLogged.load()) {
-			std::this_thread::sleep_for(std::chrono::seconds(20)); // this MUST be included or else you get blocked from API
+			 
 			KeyAuthApp.check();
 			if (!KeyAuthApp.response.success) {
-				exit(0);
+				MessageBoxA(NULL, KeyAuthApp.response.message.c_str(), skCrypt("Error"), MB_OK | MB_ICONERROR);
+				Sleep(2500);
+				exit(1);
 			}
+			std::this_thread::sleep_for(std::chrono::seconds(20)); // this MUST be included or else you get blocked from API
 		}
 	}
 	
@@ -59,7 +65,9 @@ void sessionStatus() {
 void checkAuthenticated(std::string ownerid) {
 	while (isLogged.load()) {
 		if (GlobalFindAtomA(ownerid.c_str()) == 0) {
-			exit(13);
+			//MessageBoxA(NULL, "Cant find owner id", "Error", MB_OK | MB_ICONERROR);
+			Sleep(2500);
+			exit(1);
 		}
 		std::this_thread::sleep_for(std::chrono::seconds(5)); // thread interval
 	}
@@ -70,8 +78,8 @@ void keyAuthInit() {
 	if (!KeyAuthApp.response.success)
 	{
 
-		MessageBoxA(NULL, "KeyAuth cant initialize", "Error", MB_OK | MB_ICONERROR);
-		Sleep(1500);
+		MessageBoxA(NULL, KeyAuthApp.response.message.c_str(), skCrypt("Error"), MB_OK | MB_ICONERROR);
+		Sleep(2500);
 		exit(1);
 	}
 	
@@ -84,14 +92,14 @@ bool keySucces()
 	SI_Error rc = iniKey.LoadFile(keyFilename);
 	if (rc < 0)
 	{
-		key = "You can buy key";
-		iniKey.SetValue("license", "key", key.c_str());
+		key = skCrypt("You can buy key TG @Sektor223");
+		iniKey.SetValue(skCrypt("license"), skCrypt("key"), key.c_str());
 		iniKey.SaveFile(keyFilename);
 		
 		KeyAuthApp.license(key, "");
 
 		if (KeyAuthApp.response.message.empty()) {
-			MessageBoxA(NULL, "KeyAuth does not respond", "Error", MB_OK | MB_ICONERROR);
+			MessageBoxA(NULL, skCrypt("KeyAuth does not respond"), skCrypt("Error"), MB_OK | MB_ICONERROR);
 			exit(11);
 		}
 
@@ -100,11 +108,11 @@ bool keySucces()
 	else
 	{
 
-		key = iniKey.GetValue("license", "key");
+		key = iniKey.GetValue(skCrypt("license"), skCrypt("key"));
 		KeyAuthApp.license(key);
 
 		if (KeyAuthApp.response.message.empty()) {
-			MessageBoxA(NULL, "KeyAuth does not respond", "Error", MB_OK | MB_ICONERROR);
+			MessageBoxA(NULL, skCrypt("KeyAuth does not respond"), skCrypt("Error"), MB_OK | MB_ICONERROR);
 			exit(11);
 		}
 
@@ -119,7 +127,7 @@ bool tryLogin(std::string license) {
 	
 	KeyAuthApp.license(license);
 	if (KeyAuthApp.response.success) {
-		iniKey.SetValue("license", "key", license.c_str());
+		iniKey.SetValue(skCrypt("license"), skCrypt("key"), license.c_str());
 		iniKey.SaveFile(keyFilename);
 	}
 	return KeyAuthApp.response.success;
@@ -127,24 +135,24 @@ bool tryLogin(std::string license) {
 
 void AuthorizationWindow() {
 	ImGui::SetNextWindowSize(ImVec2(400, 150));
-	if (ImGui::Begin("Authorization", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings)) {
+	if (ImGui::Begin(skCrypt("Authorization"), NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings)) {
 		
 		
-		ImGui::InputText("License Key", licenseBuffer, IM_ARRAYSIZE(licenseBuffer), ImGuiInputTextFlags_Password);
+		ImGui::InputText(skCrypt("License Key"), licenseBuffer, IM_ARRAYSIZE(licenseBuffer), ImGuiInputTextFlags_Password);
 
-		if (ImGui::Button("Login", ImVec2(100, 40))) {
+		if (ImGui::Button(skCrypt("Login"), ImVec2(100, 40))) {
 			//std::string licenseString = licenseBuffer;
 			isLogged = tryLogin(licenseBuffer);
 			
 		}
 		ImGui::SameLine();
-		if (ImGui::Button("Close", ImVec2(100, 40))) {
+		if (ImGui::Button(skCrypt("Close"), ImVec2(100, 40))) {
 			state.shouldExit = true;
 		}
 		if (!isLogged.load()) {
-			if (KeyAuthApp.response.message != "Initialized" && KeyAuthApp.response.message != "Session is validated.") {
-				ImGui::Text(KeyAuthApp.response.message.c_str());
-			}
+			
+			ImGui::Text(KeyAuthApp.response.message.c_str());
+			
 		}
 		ImGui::End();
 	}
@@ -159,7 +167,7 @@ struct futureLogin { //this is shit
 	std::string tm_to_readable_time(tm ctx) {
 		char buffer[80];
 
-		strftime(buffer, sizeof(buffer), "%a %m/%d/%y %H:%M:%S", &ctx);
+		strftime(buffer, sizeof(buffer), "%d/%m/%y %H:%M:%S", &ctx);
 
 		return std::string(buffer);
 	}
@@ -177,8 +185,9 @@ struct futureLogin { //this is shit
 
 		return context;
 	}
+
 	std::string getTitle() {
-		return Bykvi + expire;
+		return  version + " " + Bykvi + expire;
 	}
 	
 private:

@@ -3,8 +3,8 @@
 #include<opencv2/imgcodecs.hpp>
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
-#include <Windows.h>
-
+//#include <Windows.h>
+#include<keyauth/skStr.h>
 #include <wrl/client.h>
 #include <d3d11.h>
 
@@ -16,8 +16,8 @@
 //SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
  //mb need to create globalVar header
-const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+inline int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+inline int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
 
 class Vision
@@ -46,7 +46,7 @@ private:
 	//for debug window display
 	Microsoft::WRL::ComPtr <ID3D11ShaderResourceView> textureSRV = nullptr;
 	static inline ImTextureID imguiTexture = NULL;
-	std::string statusMessage = "never started";
+	std::string statusMessage = skCrypt("never started").decrypt();
 
 	
 	//for getDesktopMat
@@ -59,11 +59,13 @@ private:
 	int windowWidth;
 	int windowHeight;
 	
+	int clientRectLeft;
+	int clientRectTop;
 	//used in getDesktopMat
 	cv::Mat fullScale = cv::Mat();
 	/////////////////////////
-
-
+	cv::Mat halved;
+	POINT windowCenter;
 	//in vision class constructor
 	Config& config;
 	//in vision class constructor
@@ -93,12 +95,13 @@ private:
 	int cleanCounter = 0;
 	int emptyCounter = 0;
 	POINT itThatRemember;
-
+	
 	//reset when fishing cycle end
 	cv::Rect cropRect = cv::Rect();
 	//reset when fishing cycle end
 	cv::Rect scaleRect = cv::Rect();
-	POINT itThatPOINT = POINT();
+	POINT matchingPos = POINT();
+	POINT clientPos;
 	cv::Mat displayImage;
 	//used in getImage
 	cv::Mat	img, imgHSV, imgMask;
@@ -236,7 +239,7 @@ private:
 	
 public:
 	bool getSelectAreaState();
-	void debugWindow();
+	void viewWindow();
 	void init_g_pd3dDevice_(ID3D11Device* g_pd3dDevicee) {
 		g_pd3dDevice_ = g_pd3dDevicee;
 	}

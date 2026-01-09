@@ -2,7 +2,7 @@
 #include"simpleini/SimpleIni.h"
 #include"buttons/Arrays.hpp"
 #include <imgui/imgui_impl_win32.h>
-
+#include<keyauth/skStr.h>
 class Config {
 private:
 	const char* filename = "fih_Settings.ini";
@@ -29,7 +29,8 @@ public:
 	bool useBait;
 	bool windowedCapture;
 	//bool gdiMustChange = false;
-	bool lowResolution = false;
+	bool lowResolution;
+	bool viewOpen;
 
 	int cycles;
 	int throwTimeMs;
@@ -42,20 +43,21 @@ public:
 
 	void saveConfig() {
 
-		ini.SetLongValue("Keys", "fihKey", fihKey);
-		ini.SetLongValue("Keys", "stopFihKey", stopFihKey);
-		ini.SetLongValue("Keys", "inventoryKey", inventoryKey);
-		ini.SetLongValue("Keys", "foodKey", foodKey);
+		ini.SetLongValue(skCrypt("Keys"), skCrypt("fihKey"), fihKey);
+		ini.SetLongValue(skCrypt("Keys"), skCrypt("stopFihKey"), stopFihKey);
+		ini.SetLongValue(skCrypt("Keys"), skCrypt("inventoryKey"), inventoryKey);
+		ini.SetLongValue(skCrypt("Keys"), skCrypt("foodKey"), foodKey);
 
-		ini.SetLongValue("Values", "areaRadius", areaRadius);
-		ini.SetLongValue("Values", "throwTimeMs", throwTimeMs);
-		ini.SetLongValue("Values", "cycles", cycles);
+		ini.SetLongValue(skCrypt("Values"), skCrypt("areaRadius"), areaRadius);
+		ini.SetLongValue(skCrypt("Values"), skCrypt("throwTimeMs"), throwTimeMs);
+		ini.SetLongValue(skCrypt("Values"), skCrypt("cycles"), cycles);
 
 		ini.SetBoolValue("Bools", "usePie", usePie);
 		ini.SetBoolValue("Bools", "useSalad", useSalad);
 		ini.SetBoolValue("Bools", "useBait", useBait);
 		ini.SetBoolValue("Bools", "windowedCapture", windowedCapture);
 		ini.SetBoolValue("Bools", "lowResolution", lowResolution);
+		ini.SetBoolValue("Bools", "viewOpen", viewOpen);
 
 		ini.SetValue("Strings", "Id", idBuff);
 
@@ -84,32 +86,30 @@ public:
 		useBait =         ini.GetBoolValue("Bools", "useBait");
 		windowedCapture = ini.GetBoolValue("Bools", "windowedCapture");
 		lowResolution =   ini.GetBoolValue("Bools", "lowResolution");
+		viewOpen =        ini.GetBoolValue("Bools", "viewOpen");
 
 		const char* idBuffconst = ini.GetValue("Strings", "Id");
 		strncpy_s(idBuff, idBuffconst, sizeof(idBuff));
-		//idBuff[sizeof(idBuff-1)] = '\0';
-		//ini.SetUnicode(true);
-		//buf = ini.GetValue("Strings", "Id");
 	}
 
-	void window(bool& bindsOpen) {
+	void keybindsWindow(bool& bindsOpen) {
 
-		ImGui::Begin("Binds", &bindsOpen, flazhoks);
+		ImGui::Begin(skCrypt("Binds"), &bindsOpen, flazhoks);
 		ImGui::BeginGroup();
-		ImGui::Text("Start Fishing"); ImGui::SameLine(ButtonX); Hotkey(&fihKey, fihButton, standartButton);
+		ImGui::Text(skCrypt("Start Fishing")); ImGui::SameLine(ButtonX); Hotkey(&fihKey, fihButton, standartButton);
 		
-		ImGui::Text("Stop Fishing");  ImGui::SameLine(ButtonX); Hotkey(&stopFihKey, stopButton, standartButton);
+		ImGui::Text(skCrypt("Stop Fishing"));  ImGui::SameLine(ButtonX); Hotkey(&stopFihKey, stopButton, standartButton);
 
-		ImGui::Text("Inventory");     ImGui::SameLine(ButtonX); Hotkey(&inventoryKey, inventoryButton, standartButton);
+		ImGui::Text(skCrypt("Inventory"));     ImGui::SameLine(ButtonX); Hotkey(&inventoryKey, inventoryButton, standartButton);
 
-		ImGui::Text("Food Slot");     ImGui::SameLine(ButtonX); Hotkey(&foodKey, foodButton, standartButton);
+		ImGui::Text(skCrypt("Food Slot"));     ImGui::SameLine(ButtonX); Hotkey(&foodKey, foodButton, standartButton);
 
 
 		ImGui::EndGroup();
 
-		if (ImGui::Button("Save Binds")) { saveConfig(); }
+		if (ImGui::Button(skCrypt("Save Binds"))) { saveConfig(); }
 		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Saves settings too");
+			ImGui::SetTooltip(skCrypt("Saves settings too"));
 		}
 		ImGui::End();
 	}
@@ -125,7 +125,7 @@ public:
 			ImGui::SetTooltip("Radius of capture area in pixels\nDefault value = 200");
 		} 
 		ImGui::SameLine();
-		ImGui::SliderInt("Area Size", &areaRadius, 200, 250);
+		ImGui::SliderInt("Area Size", &areaRadius, 100, 250);
 		//slider throwTimeMs
 		ImGui::TextDisabled("(?)");
 		if (ImGui::IsItemHovered()) {
@@ -162,7 +162,7 @@ public:
 
 		//ImGui::Checkbox("Windowed", &windowedCapture);
 		ImGui::Text("Capture mode: ");
-		if (ImGui::RadioButton("Fullscreen", !windowedCapture)) {
+		if (ImGui::RadioButton("Borderless", !windowedCapture)) {
 			windowedCapture = false;
 			
 		}
@@ -205,6 +205,7 @@ private:
 		useBait = false;
 		windowedCapture = false;
 		lowResolution = false;
+		viewOpen = false;
 		saveConfig();
 	}
 	void Hotkey(int* k, bool& button, const ImVec2& size_arg = ImVec2(0, 0))

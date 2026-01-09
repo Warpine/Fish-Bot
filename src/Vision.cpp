@@ -2,7 +2,7 @@
 #include <iostream>
 #include <imgui/imgui.h>
 #include<chrono>
-
+//#include<keyauth/skStr.h>
 
 
 Vision::Vision(Config& config) : config(config) {
@@ -37,8 +37,8 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 
 	if (config.lowResolution) {
 		inWaterSizeMin = 300;
-		scalePosDOWN = 112;
-		scalePosUP = 122;
+		scalePosDOWN = 110;
+		scalePosUP = 120;
 		matchingTempl = {
 		cv::imread("images/1024x768/scale.png", cv::IMREAD_COLOR),
 		cv::imread("images/1024x768/chickenPie.png", cv::IMREAD_COLOR),
@@ -59,7 +59,7 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 		};
 	}
 	else {
-		inWaterSizeMin = 480;
+		inWaterSizeMin = 500;
 		scalePosDOWN = 135;
 		scalePosUP = 150;
 		matchingTempl = {
@@ -82,8 +82,13 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 		};
 	}
 
+	getWindowMat();
+	int startRow = fullScale.rows * 0.5;
+	cv::Rect roi(0, startRow, fullScale.cols, fullScale.rows - startRow);
+	halved = fullScale(roi);
 	if (!isAreaSelected) {
 		selectAreaWithMouse(fihingState);
+		SetCursorPos(itThatRemember.x, itThatRemember.y);
 	}
 	
 	clockStart = std::chrono::high_resolution_clock::now();
@@ -124,14 +129,14 @@ void Vision::CaptureFih()
 		
 		getImage();
 
-		statusMessage = "thrown";
+		statusMessage = skCrypt("thrown");
 		pressKeyMouseLeft(config.throwTimeMs + (rand() % 20));
 		status = LOOKING;
 		break;
 
 	case LOOKING:
 
-		statusMessage = "looking for bobber";
+		statusMessage = skCrypt("looking for bobber");
 		
 		getImage();
 
@@ -147,15 +152,15 @@ void Vision::CaptureFih()
 		
 		break;
 	case FOUND:
-		statusMessage = "found and watching";
+		statusMessage = skCrypt("found and watching");
 		
 		
 		getImage();
 		
 		//std::cout << boundRect.area() << std::endl;
 		if (boundRect.area() < inWaterSizeMin ) {
-			status = CATCH;
 			if (checkRestart()) { break; }
+			status = CATCH;
 			pressKeyMouseLeft(10);
 			
 		}
@@ -165,7 +170,7 @@ void Vision::CaptureFih()
 		break;
 
 	case CATCH:
-		statusMessage = "catching";
+		statusMessage = skCrypt("catching");
 		
 		
 
@@ -201,7 +206,7 @@ void Vision::CaptureFih()
 		clockStart = std::chrono::high_resolution_clock::now();
 
 		status = STARTED;
-		statusMessage = "Fihing end";
+		statusMessage = skCrypt("Fihing end");
 		ZeroMemory(&inputCatch, sizeof(inputCatch));
 		
 
@@ -209,7 +214,7 @@ void Vision::CaptureFih()
 		if (config.cycles != NULL) {
 			cleanCounter++;
 			if (cleanCounter == config.cycles) {
-				statusMessage = "cleaning";
+				statusMessage = skCrypt("cleaning");
 
 				std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 				sendKeyPress(config.inventoryKey);
@@ -230,7 +235,7 @@ void Vision::CaptureFih()
 				baitCounter++;
 				
 				if (baitCounter >= 10) {
-					statusMessage = "Uses bait";
+					statusMessage = skCrypt("Uses bait");
 					useBuff(BAIT);
 					baitCounter = 0;
 				}
@@ -241,7 +246,7 @@ void Vision::CaptureFih()
 				auto endFood = std::chrono::high_resolution_clock::now();
 				auto durationFood = std::chrono::duration_cast<std::chrono::minutes>(endFood - timeFoodStart);
 				if (durationFood >= std::chrono::minutes(30)) {
-					statusMessage = "Uses food";
+					statusMessage = skCrypt("Uses food");
 					useBuff(SLOT);
 					timeFoodStart = std::chrono::high_resolution_clock::now();
 				}
@@ -254,7 +259,7 @@ void Vision::CaptureFih()
 		
 		break;
 	case SERVER_RESTART:
-		statusMessage = "Server restart detected";
+		statusMessage = skCrypt("Server restart detected");
 		timerActive = false;
 		clockStart = std::chrono::high_resolution_clock::now();
 
@@ -285,18 +290,15 @@ void Vision::catchProcess() {
 		inputCatch.type = INPUT_MOUSE;
 		inputCatch.mi.dx = 0;
 		inputCatch.mi.dy = 0;
-		/*cv::Point center(
-			boundRect.x + boundRect.width / 2,
-			boundRect.y + boundRect.height / 2
-		);*/
+	
 		
 
-		if (itThatPOINT.x <= scalePosDOWN && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)) {
+		if (clientPos.x <= scalePosDOWN && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTDOWN)) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
 			SendInput(1, &inputCatch, sizeof(INPUT));
 			//std::cout << "Mouse DOWN" << std::endl;
 		}
-		if (itThatPOINT.x >= scalePosUP && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP)) {
+		if (clientPos.x >= scalePosUP && (inputCatch.mi.dwFlags != MOUSEEVENTF_LEFTUP)) {
 			inputCatch.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 			SendInput(1, &inputCatch, sizeof(INPUT));
 			//std::cout << "Mouse UP" << std::endl;
@@ -306,7 +308,7 @@ void Vision::catchProcess() {
 	
 void Vision::stopCapture()
 {
-	statusMessage = "stopped";
+	statusMessage = skCrypt("stopped");
 	
 	if (bitmap)              DeleteObject(bitmap);
 	if (memoryDeviceContext) DeleteDC(memoryDeviceContext);
@@ -357,40 +359,10 @@ void Vision::sendKeyPress(int keyCode) {
 	SendInput(1, &input, sizeof(INPUT));
 }
 
-//void Vision::getDesktopMat() {
-//	if (!gdiInitialized) {
-//		deviceContext = GetDC(targetHWND);
-//		if (!deviceContext) return;
-//		memoryDeviceContext = CreateCompatibleDC(deviceContext);
-//
-//		
-//		BITMAPINFO bmi = { 0 }; //specify format by using bitmap info header
-//		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-//		bmi.bmiHeader.biWidth = screenWidth;
-//		bmi.bmiHeader.biHeight = -screenHeight;
-//		bmi.bmiHeader.biPlanes = 1;
-//		bmi.bmiHeader.biBitCount = 32;
-//		bmi.bmiHeader.biCompression = BI_RGB;
-//
-//		void* pBits = nullptr;
-//		bitmap = CreateDIBSection(memoryDeviceContext, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
-//		SelectObject(memoryDeviceContext, bitmap);
-//
-//		//straight use of bitmap data
-//		fullScale = cv::Mat(screenHeight, screenWidth, CV_8UC4, pBits);
-//		gdiInitialized = true;
-//	}
-//	
-//	//copy data into the bitmap
-//	BitBlt(memoryDeviceContext, 0, 0, screenWidth, screenHeight, deviceContext, 0, 0, SRCCOPY);
-//
-//	
-//}
-
 void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 
 	POINT cursorPos;
-	statusMessage = "waiting for area selection";
+	statusMessage = skCrypt("waiting for area selection");
 	
 	while (fihingState.load()) {
 
@@ -404,7 +376,8 @@ void Vision::selectAreaWithMouse(std::atomic<bool>& fihingState) {
 			GetCursorPos(&cursorPos);
 			ScreenToClient(targetHWND, &cursorPos);
 
-			itThatRemember = cursorPos;
+			//cursorPos.x = 
+			itThatRemember = POINT(cursorPos.x + clientRectLeft, cursorPos.y + clientRectTop);
 
 			
 			selectedArea.left = cursorPos.x - config.areaRadius / 2;
@@ -532,7 +505,7 @@ void Vision::getImage() {
 cv::Mat Vision::matchingMethod(matchingEnum type, cv::Mat fullMat, cv::Rect* storedRect)
 {
 	if (fullMat.empty()) {
-		fullMat = fullScale.clone();
+		fullMat = fullScale;
 	}
 
 	if(storedRect != nullptr && !storedRect->empty())
@@ -548,7 +521,7 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Mat fullMat, cv::Rect* sto
 		cv::cvtColor(matchingTempl[type], templ4chnl, cv::COLOR_BGR2BGRA);
 	    
 		if (templ4chnl.empty()) {
-			statusMessage = "Template Not Found";
+			statusMessage = skCrypt("Template Not Found");
 			if (storedRect != nullptr) {
 				*storedRect = cv::Rect();
 			}
@@ -572,10 +545,10 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Mat fullMat, cv::Rect* sto
 		catch (const cv::Exception& e) {
 			if (fullMat.type() != templ4chnl.type())
 			{
-				statusMessage = "types of image not matching";
+				statusMessage = skCrypt("types of image not matching");
 			}
 			else {
-				statusMessage = "idk exeption lol";
+				statusMessage = skCrypt("idk exeption lol");
 			}
 
 			if (storedRect != nullptr) {
@@ -632,7 +605,12 @@ cv::Mat Vision::matchingMethod(matchingEnum type, cv::Mat fullMat, cv::Rect* sto
 			if (storedRect != nullptr) {
 				*storedRect = foundRect;
 			}
-			itThatPOINT = POINT(matchLoc.x + templ4chnl.cols / 2, matchLoc.y + templ4chnl.rows / 2);
+
+			clientPos = POINT(matchLoc.x + templ4chnl.cols / 2, matchLoc.y + templ4chnl.rows / 2);
+			matchingPos = POINT(clientPos.x + clientRectLeft, clientPos.y + clientRectTop);
+			
+
+
 		
 
 
@@ -694,15 +672,15 @@ void Vision::cleanInventory(matchingEnum matchi)
 	displayImage = cleanImage;
 	if (cleanImage.empty()) {
 		
-		statusMessage = "no trash found";
+		statusMessage = skCrypt("no trash found");
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		sendKeyPress(config.inventoryKey);
+		//sendKeyPress(config.inventoryKey);
 		return;
 	}
 	
 	std::this_thread::sleep_for(std::chrono::milliseconds(2500));
-
-	SetCursorPos(itThatPOINT.x, itThatPOINT.y); 
+	//ставит курсор в центр найденного объекта
+	SetCursorPos(matchingPos.x, matchingPos.y); 
 
 	INPUT input = { 0 };
 
@@ -712,17 +690,18 @@ void Vision::cleanInventory(matchingEnum matchi)
 	input.mi.dy = 0;
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-
+	//левая мышь зажата
 	SendInput(1, &input, sizeof(input));
 	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-	SetCursorPos(fullScale.cols / 2, fullScale.rows / 2);
+	//центр экрана/окна
+	SetCursorPos(windowCenter.x, windowCenter.y);
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 	SendInput(1, &input, sizeof(input));
 	std::this_thread::sleep_for(std::chrono::milliseconds(1300));
-
-	SetCursorPos(fullScale.cols / 2 - 100, fullScale.rows / 2);
+	//наведение на кнопку ок
+	SetCursorPos(windowCenter.x - 50, windowCenter.y);
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	pressKeyMouseLeft(10);
 
@@ -741,13 +720,13 @@ void Vision::useBuff(matchingEnum type)
 	if (type == SLOT) {
 		
 		getWindowMat();
+		//displayImage = fullScale;
+		//std::this_thread::sleep_for(std::chrono::milliseconds(7000));
 		
-		
-		
-		cv::Mat slotImage = matchingMethod(type);
+		cv::Mat slotImage = matchingMethod(SLOT);
 		displayImage = slotImage;
 		if (!slotImage.empty()) { // this condition == if slotImage found
-			statusMessage = "trying to find food";
+			statusMessage = skCrypt("trying to find food");
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 			//scaleRect = cv::Rect();
 
@@ -761,7 +740,7 @@ void Vision::useBuff(matchingEnum type)
 			if (config.usePie) {
 				//cv::Rect pieRect = cv::Rect();
 				buffImage = matchingMethod(PIE);
-				//displayImage = buffImage;
+				displayImage = buffImage;
 				if (buffImage.empty()) {
 					//statusMessage = "pie not found";
 					std::this_thread::sleep_for(std::chrono::milliseconds(3000));
@@ -773,7 +752,7 @@ void Vision::useBuff(matchingEnum type)
 			else {
 				//cv::Rect saladRect = cv::Rect();
 				buffImage = matchingMethod(SALAD);
-				//displayImage = buffImage;
+				displayImage = buffImage;
 				if (buffImage.empty()) {
 					//statusMessage = "salad not found";
 					std::this_thread::sleep_for(std::chrono::milliseconds(3000));
@@ -784,7 +763,7 @@ void Vision::useBuff(matchingEnum type)
 			}
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-			SetCursorPos(itThatPOINT.x, itThatPOINT.y);
+			SetCursorPos(matchingPos.x, matchingPos.y);
 			INPUT inputs = { 0 };
 			
 
@@ -799,11 +778,11 @@ void Vision::useBuff(matchingEnum type)
 			inputs.type = INPUT_MOUSE;
 			inputs.mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 			SendInput(1, &inputs, sizeof(INPUT));
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
 			ZeroMemory(&inputs, sizeof(INPUT));
 			inputs.type = INPUT_MOUSE;
@@ -830,9 +809,9 @@ void Vision::useBuff(matchingEnum type)
 		}
 
 		else { //if not found just press food
-			
+			statusMessage = skCrypt("food slot not found");
 			sendKeyPress(config.foodKey);
-			std::this_thread::sleep_for(std::chrono::milliseconds(300));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1100));
 			return;
 		}
 	}
@@ -854,7 +833,7 @@ void Vision::useBuff(matchingEnum type)
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(2500));
-		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
+		SetCursorPos(matchingPos.x, matchingPos.y);
 		
 		std::this_thread::sleep_for(std::chrono::milliseconds(1300));
 		pressKeyMouseLeft(10);
@@ -875,7 +854,7 @@ void Vision::useBuff(matchingEnum type)
 		}
 		
 		std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
+		SetCursorPos(matchingPos.x, matchingPos.y);
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(700));
 		pressKeyMouseLeft(10);
@@ -910,7 +889,7 @@ bool Vision::getSelectAreaState()
 	return isAreaSelected;
 }
 
-void Vision::debugWindow() {
+void Vision::viewWindow() {
 	
 	if (isAreaSelected) {
 		TextureForDebug();
@@ -920,18 +899,18 @@ void Vision::debugWindow() {
 		imguiTexture = NULL;
 	}
 	
-	ImGui::Begin("View", NULL, config.flazhoks);
+	ImGui::Begin(skCrypt("View"), NULL, config.flazhoks);
 	ImGui::Text(statusMessage.c_str());
 	
 	ImGui::Image(imguiTexture, ImVec2(displayImage.cols, displayImage.rows));
 	
 	
-	ImGui::TextDisabled("(?)");
+	ImGui::TextDisabled(skCrypt("(?)"));
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("if timer reaches 0 fishing stops\n resets every cycle");
+		ImGui::SetTooltip(skCrypt("if timer reaches 0 fishing stops\n resets every cycle"));
 	}
 	ImGui::SameLine();
-	std::string errorTimer = "error timer: " + std::to_string(360 - duration);
+	std::string errorTimer = skCrypt("error timer: ").decrypt() + std::to_string(360 - duration);
 	ImGui::Text(errorTimer.c_str());
 
 	
@@ -945,7 +924,7 @@ void Vision::RestartingP1() {
 	cv::Mat noticeMat = matchingMethod(SERVERNOTICE);
 	if (!noticeMat.empty()) {
 		displayImage = noticeMat;
-		statusMessage = "notice found, sleeping for 4 minutes";
+		statusMessage = skCrypt("notice found, sleeping for 4 minutes");
 		std::this_thread::sleep_for(std::chrono::minutes(4));
 	}
 	
@@ -953,9 +932,9 @@ void Vision::RestartingP1() {
 	cv::Mat loginMat = matchingMethod(LOGINBUTTON);
 	if (!loginMat.empty()) {
 		displayImage = loginMat;
-		statusMessage = "Login found";
+		statusMessage = skCrypt("Login found");
 		std::this_thread::sleep_for(std::chrono::milliseconds(2050));
-		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
+		SetCursorPos(matchingPos.x, matchingPos.y);
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		pressKeyMouseLeft(12);
 		std::this_thread::sleep_for(std::chrono::seconds(20)); //after login button clicked
@@ -974,9 +953,9 @@ bool Vision::okWindowCheck()
 	cv::Mat okMat = matchingMethod(OKBUTTON);
 	if (!okMat.empty()) {
 		displayImage = okMat;
-		statusMessage = "OK button found";
+		statusMessage = skCrypt("OK button found");
 		std::this_thread::sleep_for(std::chrono::milliseconds(2050));
-		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
+		SetCursorPos(matchingPos.x, matchingPos.y);
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		pressKeyMouseLeft(12);
 		return true;
@@ -996,10 +975,10 @@ void Vision::RestartingP2()
 	cv::Mat enterWorldMat = matchingMethod(ENTERWORLDBUTTON);
 	if (!enterWorldMat.empty()) {
 		displayImage = enterWorldMat;
-		statusMessage = "EnterWorld found";
+		statusMessage = skCrypt("EnterWorld found");
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		SetCursorPos(itThatPOINT.x, itThatPOINT.y);
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		SetCursorPos(matchingPos.x, matchingPos.y);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		pressKeyMouseLeft(12);
 		std::this_thread::sleep_for(std::chrono::seconds(20));
 
@@ -1008,7 +987,13 @@ void Vision::RestartingP2()
 		
 		
 		cv::Mat closeButton = matchingMethod(CLOSEBUTTONX);
-		INPUT mouseWheelUP = { 0 };
+		if (!closeButton.empty()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+			SetCursorPos(matchingPos.x, matchingPos.y);
+			pressKeyMouseLeft(12);
+
+		}
+		/*INPUT mouseWheelUP = { 0 };
 		mouseWheelUP.type = INPUT_MOUSE;
 		mouseWheelUP.mi.dwFlags = MOUSEEVENTF_WHEEL;
 		mouseWheelUP.mi.mouseData = WHEEL_DELTA;
@@ -1016,7 +1001,7 @@ void Vision::RestartingP2()
 		{
 			SendInput(1, &mouseWheelUP, sizeof(INPUT));
 			std::this_thread::sleep_for(std::chrono::milliseconds(65));
-		}
+		}*/
 
 	}
 	
@@ -1027,8 +1012,8 @@ cv::Mat Vision::getTemplateInTemplate(matchingEnum backTemplate, matchingEnum fr
 	
 	getWindowMat();
 	
-	
-	cv::Mat backImage = matchingMethod(backTemplate, cv::Mat(), &backRect);
+    //может использоваться только для шкалы ловли, чтобы использовать по-нормальному надо в конструктор добавить матрицу
+	cv::Mat backImage = matchingMethod(backTemplate, halved, &backRect);
 	if (backImage.empty()) {
 		return cv::Mat();
 	}
@@ -1052,7 +1037,7 @@ void Vision::getWindowMat() {
 
 
 			RECT windowRect;
-			GetClientRect(targetHWND, &windowRect);
+			GetWindowRect(targetHWND, &windowRect);
 
 
 			windowWidth = windowRect.right - windowRect.left;
@@ -1060,6 +1045,22 @@ void Vision::getWindowMat() {
 
 			if (windowWidth <= 0 || windowHeight <= 0) return;
 
+			RECT clientRect;
+			GetClientRect(targetHWND, &clientRect);
+			int borderWidth = ((windowRect.right - windowRect.left) -
+				(clientRect.right - clientRect.left)) / 2;
+			int titleBarHeight = (windowRect.bottom - windowRect.top) -
+				(clientRect.bottom - clientRect.top) -
+				borderWidth * 2;
+
+			POINT windowTopLeft = { 0,0 };
+			ClientToScreen(targetHWND, &windowTopLeft);
+			clientRectLeft = windowTopLeft.x;
+			clientRectTop = windowTopLeft.y;
+			
+			 // это надо в глобал
+			windowCenter.x = windowRect.left + (windowWidth / 2);
+			windowCenter.y = windowRect.top + (windowHeight / 2);
 
 			deviceContext = GetDC(targetHWND);
 			if (!deviceContext) return;
@@ -1084,12 +1085,17 @@ void Vision::getWindowMat() {
 		BOOL result = PrintWindow(targetHWND, memoryDeviceContext, PW_RENDERFULLCONTENT);
 	}
 	else {
+		
+		clientRectLeft = 0;
+		clientRectTop = 0;
 
 		if (!gdiInitialized) {
 			deviceContext = GetDC(targetHWND);
 			if (!deviceContext) return;
 			memoryDeviceContext = CreateCompatibleDC(deviceContext);
 
+			windowCenter.x = screenWidth / 2;
+			windowCenter.y = screenHeight / 2;
 
 			BITMAPINFO bmi = { 0 }; //specify format by using bitmap info header
 			bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);

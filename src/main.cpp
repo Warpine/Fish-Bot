@@ -1,12 +1,15 @@
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00
+#endif
 #include<opencv2/imgcodecs.hpp>
 #include<opencv2/highgui.hpp>
 #include<opencv2/imgproc.hpp>
 
 #include"tgbot/tgbot.h"
-#include<Windows.h>
+//#include<Windows.h>
 #include<dwmapi.h>
 #include<d3d11.h>
-#include <tchar.h>
+#include<tchar.h>
 #include<thread>
 #include<chrono>
 
@@ -15,12 +18,15 @@
 #include<imgui/imgui_impl_win32.h>
 
 TgBot::Bot bot("8453817061:AAFzZ0Xl6C8VivHLaw_V6bcb7Io1Uf0Mw6k");
+//#include <wininet.h>
 
 #include"Config.h"
 #include"Notifier.h"
 #include"Vision.h"
 #include"Utility.h"
 #include"Login.h"
+
+//#include <windows.h>
 
 //debug
 #include<iostream>
@@ -72,20 +78,20 @@ std::thread run;
 // do NOT remove checkAuthenticated(), it MUST stay for security reasons
 std::thread check; // do NOT remove this function either.
 
+
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	
 	
-	//SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
-	//screenWidth = GetSystemMetrics(SM_CXSCREEN);
-	//screenHeight = GetSystemMetrics(SM_CYSCREEN);
+	screenWidth = GetSystemMetrics(SM_CXSCREEN);
+	screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
 	// Make process DPI aware and obtain main monitor scale
 	ImGui_ImplWin32_EnableDpiAwareness();
 	float mainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY));
 	
 
-	CreateConsole();
-	std::cout << "test" << std::endl;
+	//CreateConsole();
+	//std::cout << "test" << std::endl;
 	
 	
 	config.loadConfig();
@@ -93,7 +99,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	//window
 	//HICON hIcon = LoadIconWithScaleDown(NULL, L"src/fih.png", IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
 	HICON hIcon = (HICON)LoadImage(NULL, L"src/fih.ico", IMAGE_ICON, 256, 256, LR_LOADFROMFILE);
-	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), hIcon, nullptr, nullptr, nullptr, L"Blackmagic Design", hIcon };
+	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), hIcon, nullptr, nullptr, nullptr, L"JustFih", hIcon };
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowExW(WS_EX_TOPMOST |  WS_EX_LAYERED, wc.lpszClassName, L"ImJustAfih", WS_POPUP, 0, 0, screenWidth, screenHeight, nullptr, nullptr, wc.hInstance, nullptr);
 	
@@ -119,7 +125,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	ImFont *mainFont = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Arial.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
 	io.FontDefault = mainFont;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	
 	//style and scaling
@@ -147,6 +153,12 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 
 	keyAuthInit();
 	isLogged = keySucces();
+	//KeyAuthApp.check(); // do NOT specify true usually, it is slower and will get you blocked from API
+	//if (!KeyAuthApp.response.success) {
+	//	MessageBoxA(NULL, KeyAuthApp.response.message.c_str(), "Error", MB_OK | MB_ICONERROR);
+	//	Sleep(2500);
+	//	exit(0);
+	//}
 
 	
 	if (isLogged.load()) {
@@ -155,14 +167,6 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	}
 	
 
-	if (!run.joinable()) {
-		run = std::thread(checkAuthenticated, ownerid);
-		// do NOT remove checkAuthenticated(), it MUST stay for security reasons
-
-	}
-	if (!check.joinable()) {
-		check = std::thread(sessionStatus); // do NOT remove this function either.
-	}
 
 	//main loop
 	while (!state.shouldExit.load())
@@ -207,6 +211,14 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		if (isLogged.load()) {
 			
 		    state.manage();
+			if (!run.joinable()) {
+				run = std::thread(checkAuthenticated, ownerid);
+				// do NOT remove checkAuthenticated(), it MUST stay for security reasons
+
+			}
+			if (!check.joinable()) {
+				check = std::thread(sessionStatus); // do NOT remove this function either.
+			}
 			
 
 		   if (state.fihing.load()) {

@@ -30,7 +30,7 @@ private:
 
 	bool showMainWin = true;
 	bool showHint = true;
-	bool view = false;
+	
 	bool bindsOpen = false;
 	bool settingsOpen = false;
 	bool guideOpen = false;
@@ -41,11 +41,11 @@ private:
 public:
 
 	AppState(Config& cnf, Vision& vision) : config(cnf), vision(vision) {
-		guidelineEng = readFileToString("src/eng.txt");
-		guidelineRus = readFileToString("src/rus.txt");
+		guidelineEng = readFileToString(skCrypt("src/eng.txt").decrypt());
+		guidelineRus = readFileToString(skCrypt("src/rus.txt").decrypt());
 	}
 	void setMainTitle(std::string title) {
-		windowTitle = "FihBot 1.0 " + title;
+		windowTitle = skCrypt("FihBot ").decrypt() + title;
 	}
 	
 	void manage() {
@@ -58,7 +58,7 @@ public:
 		}
 
 		if (bindsOpen && showMainWin) {
-			config.window(bindsOpen);
+			config.keybindsWindow(bindsOpen);
 		}
 		if (settingsOpen && showMainWin) {
 			config.settingsWindow(settingsOpen);
@@ -71,8 +71,8 @@ public:
 			ShowMainWindow();
 
 
-		if (view)
-			vision.debugWindow();
+		if (config.viewOpen)
+			vision.viewWindow();
 		
 		
 		
@@ -84,29 +84,29 @@ private:
 		
 		ImGui::Begin(windowTitle.c_str(), 0, config.flazhoks);
 		
-		if (ImGui::Button("Guide", config.standartButton)) {
+		if (ImGui::Button(skCrypt("Guide"), config.standartButton)) {
 
 			guideOpen = !guideOpen;
 
 		}
 		
 		ImGui::SameLine(config.ButtonX*3);
-		if (ImGui::Button("Keybinds", config.standartButton)) {
+		if (ImGui::Button(skCrypt("Keybinds"), config.standartButton)) {
 
 			bindsOpen = !bindsOpen;
 		}
-		if (ImGui::Button("Start", ImVec2(config.ButtonX, config.ButtonY * 2)))
+		if (ImGui::Button(skCrypt("Start"), ImVec2(config.ButtonX, config.ButtonY * 2)))
 		{
 			fihing.store(true);
 		}
 		ImGui::SameLine(config.ButtonX * 3);
 		ImGui::BeginGroup();
 		
-		if (ImGui::Button("Settings", config.standartButton)) {
+		if (ImGui::Button(skCrypt("Settings"), config.standartButton)) {
 
 			settingsOpen = !settingsOpen;
 		}
-		if (ImGui::Button("Close", config.standartButton))
+		if (ImGui::Button(skCrypt("Close"), config.standartButton))
 			shouldExit = true;
 		ImGui::EndGroup();
 		
@@ -114,8 +114,8 @@ private:
 		
 
 		
-		ImGui::Checkbox("View", &view);
-		ImGui::Checkbox("TgBot menu", &botMenu);
+		ImGui::Checkbox(skCrypt("View"), &config.viewOpen);
+		ImGui::Checkbox(skCrypt("TgBot menu"), &botMenu);
 		
 		ImGui::SameLine(config.ButtonX * 2.5);
 		ImGui::Text(author2.c_str());
@@ -123,17 +123,17 @@ private:
 			ImGui::Text("Id: "); ImGui::SameLine();
 			ImGui::PushItemWidth(100.0f);
 			ImGui::InputText(" ", config.idBuff, IM_ARRAYSIZE(config.idBuff));
-			ImGui::TextLinkOpenURL("TgBot URL", "https://t.me/KabaniyPromisel_bot");
+			ImGui::TextLinkOpenURL(skCrypt("TgBot URL"), skCrypt("https://t.me/KabaniyPromisel_bot"));
 
-			ImGui::TextColored(ImVec4(255, 0, 0, 255), "WARNING that may freeze menu for about 20 seconds");
-			if (ImGui::RadioButton("Start Request", tgRequest)) {
+			ImGui::TextColored(ImVec4(255, 0, 0, 255), skCrypt("WARNING that may freeze menu for about 20 seconds"));
+			if (ImGui::RadioButton(skCrypt("Start Request"), tgRequest)) {
 				tgRequest = true;
 				if (!tgBotThread.joinable()) {
 					tgBotThread = std::thread(Notifier::sendLongPollEvent, std::ref(bot));
 				}
 			}
 			ImGui::SameLine();
-			if (ImGui::RadioButton("Stop Request", !tgRequest)) {
+			if (ImGui::RadioButton(skCrypt("Stop Request"), !tgRequest)) {
 				tgRequest = false;
 				if (tgBotThread.joinable()) {
 					tgBotThread.join();
@@ -145,7 +145,7 @@ private:
 		ImGui::End();
 	}
 	void GuideWindow(){
-		ImGui::Begin("Guide", NULL, config.flazhoks);
+		ImGui::Begin(skCrypt("Guide"), NULL, config.flazhoks);
 
 		if (guideEng) {
 			ImGui::Text(guidelineEng.c_str());
@@ -154,10 +154,10 @@ private:
 			ImGui::Text(guidelineRus.c_str());
 		}
 
-		if (ImGui::RadioButton("Eng", guideEng)) {
+		if (ImGui::RadioButton(skCrypt("Eng"), guideEng)) {
 			guideEng = true;
 		}
-		if (ImGui::RadioButton("Ru", !guideEng)) {
+		if (ImGui::RadioButton(skCrypt("Ru"), !guideEng)) {
 			guideEng = false;
 		}
 		ImGui::End();
