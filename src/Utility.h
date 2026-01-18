@@ -26,7 +26,7 @@ private:
 	std::string windowTitle = skCrypt("FihBot 1.0 - Built at:  ").decrypt() + compilation_date + " " + compilation_time;
 	std::string guidelineRus;
 	std::string guidelineEng;
-	std::string author2 = skCrypt("Telegram @Sektor223").decrypt();
+	std::string author2 = skCrypt("-").decrypt();
 
 	bool showMainWin = true;
 	bool showHint = true;

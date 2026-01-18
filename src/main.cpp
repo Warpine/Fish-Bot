@@ -74,9 +74,9 @@ ImGuiStyle SetupImGuiStyle();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 //TgBot::Bot bot("8453817061:AAFzZ0Xl6C8VivHLaw_V6bcb7Io1Uf0Mw6k");
-std::thread run;
+//std::thread run;
 // do NOT remove checkAuthenticated(), it MUST stay for security reasons
-std::thread check; // do NOT remove this function either.
+//std::thread check; // do NOT remove this function either.
 
 
 INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
@@ -151,8 +151,8 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 
 	vizu.init_g_pd3dDevice_(g_pd3dDevice);
 
-	keyAuthInit();
-	isLogged = keySucces();
+	//keyAuthInit();
+	isLogged = true;//keySucces();
 	//KeyAuthApp.check(); // do NOT specify true usually, it is slower and will get you blocked from API
 	//if (!KeyAuthApp.response.success) {
 	//	MessageBoxA(NULL, KeyAuthApp.response.message.c_str(), "Error", MB_OK | MB_ICONERROR);
@@ -211,14 +211,14 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		if (isLogged.load()) {
 			
 		    state.manage();
-			if (!run.joinable()) {
-				run = std::thread(checkAuthenticated, ownerid);
-				// do NOT remove checkAuthenticated(), it MUST stay for security reasons
+			//if (!run.joinable()) {
+			//	run = std::thread(checkAuthenticated, ownerid);
+			//	// do NOT remove checkAuthenticated(), it MUST stay for security reasons
 
-			}
-			if (!check.joinable()) {
-				check = std::thread(sessionStatus); // do NOT remove this function either.
-			}
+			//}
+			//if (!check.joinable()) {
+			//	check = std::thread(sessionStatus); // do NOT remove this function either.
+			//}
 			
 
 		   if (state.fihing.load()) {
@@ -251,7 +251,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 
 	    }
 		else {
-			AuthorizationWindow();
+			//AuthorizationWindow();
 			
 		}
 		
@@ -281,12 +281,12 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	if (state.fishingThread.joinable()) {
 		state.fishingThread.join();
 	}
-	if (run.joinable()) {
+	/*if (run.joinable()) {
 		run.detach();
 	}
 	if (check.joinable()) {
 		check.detach();
-	}
+	}*/
 	if (state.tgBotThread.joinable()) {
 		state.tgBotThread.detach();
 	}
