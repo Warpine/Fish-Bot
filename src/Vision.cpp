@@ -92,6 +92,7 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 	}
 	
 	clockStart = std::chrono::high_resolution_clock::now();
+	//idk why i added this
 	if (config.usePie || config.useBait || config.useSalad) {
 		buffsActive = true;
 		if(config.usePie || config.useSalad)
@@ -100,7 +101,10 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 	else {
 		buffsActive = false;
 	}
-
+	//timer until stop
+	if (config.workTime != NULL) {
+		startWork = std::chrono::high_resolution_clock::now();
+	}
 	
 	
 	while (fihingState.load())
@@ -108,6 +112,15 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 		if (shouldExit.load()) { break; }
 
 			CaptureFih();
+
+			if (config.workTime != NULL) {
+				auto endWork = std::chrono::high_resolution_clock::now();
+				auto workDuration = std::chrono::duration_cast<std::chrono::hours>(endWork - startWork);
+				if (config.workTime >= workDuration.count()) {
+					fihingState = false;
+					break;
+				}
+			}
 	}
 	
 	stopCapture();
@@ -209,7 +222,7 @@ void Vision::CaptureFih()
 		statusMessage = skCrypt("Fihing end");
 		ZeroMemory(&inputCatch, sizeof(inputCatch));
 		
-
+		
 		if (checkRestart()) { break; } 
 		if (config.cycles != NULL) {
 			cleanCounter++;
@@ -473,12 +486,12 @@ void Vision::getImage() {
 			maxAreaIdx = i;
 		}
 	}
-
+	
 	displayImage = img;
 	//find rect for bobber
 	if (maxAreaIdx >= 0) {
 		boundRect = cv::boundingRect(contours[maxAreaIdx]);
-		std::cout << boundRect.area() << std::endl;
+		//std::cout << boundRect.area() << std::endl;
 		
 		
 		if (boundRect.area() >= inWaterSizeMin) {

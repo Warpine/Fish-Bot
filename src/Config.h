@@ -32,6 +32,7 @@ public:
 	bool lowResolution;
 	bool viewOpen;
 
+	int workTime;
 	int cycles;
 	int throwTimeMs;
 	int areaRadius;
@@ -51,6 +52,7 @@ public:
 		ini.SetLongValue(skCrypt("Values"), skCrypt("areaRadius"), areaRadius);
 		ini.SetLongValue(skCrypt("Values"), skCrypt("throwTimeMs"), throwTimeMs);
 		ini.SetLongValue(skCrypt("Values"), skCrypt("cycles"), cycles);
+		ini.SetLongValue(skCrypt("Values"), skCrypt("workTime"), workTime);
 
 		ini.SetBoolValue("Bools", "usePie", usePie);
 		ini.SetBoolValue("Bools", "useSalad", useSalad);
@@ -80,6 +82,7 @@ public:
 		throwTimeMs =     ini.GetLongValue("Values", "throwTimeMs");
 		areaRadius =      ini.GetLongValue("Values", "areaRadius");
 		cycles =          ini.GetLongValue("Values", "cycles");
+		workTime =        ini.GetLongValue("Values", "workTime");
 
 		usePie =          ini.GetBoolValue("Bools", "usePie");
 		useSalad =        ini.GetBoolValue("Bools", "useSalad");
@@ -133,7 +136,12 @@ public:
 		}
 		ImGui::SameLine();
 		ImGui::SliderInt("Throw time", &throwTimeMs, 250, 600);
-
+		ImGui::TextDisabled("(?)");
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Time in hours until bot stops\n if set to zero = works until manually stopped");
+		}
+		ImGui::SameLine();
+		ImGui::SliderInt("Work Time", &workTime, 0, 24);
 		//slider throwCount
 		ImGui::TextDisabled("(?)");
 		if (ImGui::IsItemHovered()) {
@@ -200,6 +208,7 @@ private:
 		areaRadius = 200;
 		throwTimeMs = 350;
 		cycles = 30;
+		workTime = 0;
 		useSalad = false;
 		usePie = false;
 		useBait = false;

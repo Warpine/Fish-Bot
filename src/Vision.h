@@ -249,7 +249,9 @@ public:
 
 	
 	int duration;
+	//time start for error check
 	std::chrono::steady_clock::time_point clockStart;
+	std::chrono::steady_clock::time_point startWork;
 	std::atomic<time_t> startTime;
 	
 	void startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit);

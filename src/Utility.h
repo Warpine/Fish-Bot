@@ -26,7 +26,7 @@ private:
 	std::string windowTitle = skCrypt("FihBot 1.0 - Built at:  ").decrypt() + compilation_date + " " + compilation_time;
 	std::string guidelineRus;
 	std::string guidelineEng;
-	std::string author2 = skCrypt("-").decrypt();
+	std::string author2 = skCrypt("").decrypt();
 
 	bool showMainWin = true;
 	bool showHint = true;
@@ -45,7 +45,7 @@ public:
 		guidelineRus = readFileToString(skCrypt("src/rus.txt").decrypt());
 	}
 	void setMainTitle(std::string title) {
-		windowTitle = skCrypt("FihBot ").decrypt() + title;
+		windowTitle = skCrypt("").decrypt() + title;
 	}
 	
 	void manage() {
@@ -84,11 +84,11 @@ private:
 		
 		ImGui::Begin(windowTitle.c_str(), 0, config.flazhoks);
 		
-		if (ImGui::Button(skCrypt("Guide"), config.standartButton)) {
+		/*if (ImGui::Button(skCrypt("Guide"), config.standartButton)) {
 
 			guideOpen = !guideOpen;
 
-		}
+		}*/
 		
 		ImGui::SameLine(config.ButtonX*3);
 		if (ImGui::Button(skCrypt("Keybinds"), config.standartButton)) {
