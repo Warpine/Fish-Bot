@@ -714,7 +714,10 @@ void Vision::cleanInventory(matchingEnum matchi)
 	SendInput(1, &input, sizeof(input));
 	std::this_thread::sleep_for(std::chrono::milliseconds(1300));
 	//наведение на кнопку ок
-	SetCursorPos(windowCenter.x - 50, windowCenter.y);
+	cv::Mat buttonImg = matchingMethod(OKBUTTON);
+	//надеюсь это будет работать
+	SetCursorPos(matchingPos.x, matchingPos.y);
+	//SetCursorPos(windowCenter.x - 70, windowCenter.y);
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	pressKeyMouseLeft(10);
 
