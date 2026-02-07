@@ -135,7 +135,7 @@ public:
 			ImGui::SetTooltip("Determines how far the fishing rod will be thrown in milliseconds\nDefault value = 350");
 		}
 		ImGui::SameLine();
-		ImGui::SliderInt("Throw time", &throwTimeMs, 250, 600);
+		ImGui::SliderInt("Throw time", &throwTimeMs, 250, 1000);
 		ImGui::TextDisabled("(?)");
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("Time in hours until bot stops\n if set to zero = works until manually stopped");

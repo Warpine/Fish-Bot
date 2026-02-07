@@ -115,8 +115,8 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 
 			if (config.workTime != NULL) {
 				auto endWork = std::chrono::high_resolution_clock::now();
-				auto workDuration = std::chrono::duration_cast<std::chrono::hours>(endWork - startWork);
-				if (config.workTime >= workDuration.count()) {
+				int workDuration = std::chrono::duration_cast<std::chrono::hours>(endWork - startWork).count();
+				if (workDuration >= config.workTime) {
 					fihingState = false;
 					break;
 				}
