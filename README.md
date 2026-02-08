@@ -10,4 +10,7 @@
 - Rest cycles for fish respawn;
 - Time until disabling;
 - Keybinds;
+- Bait and Food usage;
+- Capture mode Fullscreen/Windowed
+- Screen resolution 1920x1080 or 1024x768
 
