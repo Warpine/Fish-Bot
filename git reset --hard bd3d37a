@@ -1,0 +1,55 @@
+[33m098792b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33mbd3d37a[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: commit: added rest option
+[33m098792b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{2}: commit: fixed a bug when cursor couldn't find okbutton on clean case(not tested yet)
+[33mce22bd1[m HEAD@{3}: commit: fixed work timer
+[33m1289df1[m HEAD@{4}: commit: added configurable timer for automatic shutdown
+[33mddafb6e[m HEAD@{5}: pull: Merge made by the 'ort' strategy.
+[33m7409e80[m HEAD@{6}: commit: login disabled
+[33mb7ca43e[m HEAD@{7}: commit: minor bug fixes, added needed dll's
+[33m497011f[m HEAD@{8}: commit: added tg bot
+[33mf692bd7[m HEAD@{9}: commit: part2
+[33mcd8c87c[m HEAD@{10}: commit: updated vision start capture
+[33mc91de27[m HEAD@{11}: commit: fixed img display, changed method of bobber capture in scale
+[33mb65fe93[m HEAD@{12}: commit: save with minor improvements before storm
+[33m5d1bf9d[m HEAD@{13}: commit: added stone to cleaninventory, restart case improvements
+[33md6d9417[m HEAD@{14}: commit: it is release
+[33mbeba6c4[m HEAD@{15}: commit: improved CATCH condition logic to prevent errors when server restart, improved debug window
+[33m57d5384[m HEAD@{16}: commit: added errorTimer, and server restart condition in Vision::CaptureFih
+[33m7fa29be[m HEAD@{17}: commit: added useBuffs and cleanInventory methods to Vision, probably have bugs
+[33m6de831c[m HEAD@{18}: commit: added parameters for all icons
+[33mf9d00ce[m HEAD@{19}: commit: forgot to add counter reset
+[33m89af0e4[m HEAD@{20}: commit: added layer of defence for CATCH
+[33mf4e7ac7[m HEAD@{21}: commit: I pretend it works
+[33mf218865[m HEAD@{22}: commit: before i ruin all i must commit
+[33m57a5dbc[m HEAD@{23}: commit: interface improvement, docking disabled
+[33m6d63aa4[m HEAD@{24}: commit: added some description for variables in Vision.h, some variables moved to private
+[33m5c491d2[m HEAD@{25}: commit: deleted unnecessary files .ilk, .ini
+[33m5484de2[m HEAD@{26}: commit: it finally worked
+[33m542a7db[m HEAD@{27}: commit: added optimal value for bobber size
+[33m611eb27[m HEAD@{28}: pull: Merge made by the 'ort' strategy.
+[33m7a66ed2[m HEAD@{29}: commit: fixed issues with bobber behavior
+[33m0da96c1[m HEAD@{30}: commit: Config separated from Utility.h, added proper debug image in debug window
+[33m79e69a9[m HEAD@{31}: pull: Merge made by the 'ort' strategy.
+[33mb8f5e5c[m HEAD@{32}: commit: changed settings save, added changeble binds
+[33mcdf14d6[m HEAD@{33}: pull: Merge made by the 'ort' strategy.
+[33md9fcbee[m HEAD@{34}: commit: added settings saving
+[33md3e1ec2[m HEAD@{35}: commit: getDestopMat optimized i think, now gui doesnt hide when you click on another window, also removed unnecessary statics from Vision class
+[33mc0d4401[m HEAD@{36}: commit: added template match method, need to change backend
+[33me24fc26[m HEAD@{37}: pull: Fast-forward
+[33mf009cc1[m HEAD@{38}: commit: code structure is significantly improved, now Vision is a true class and works in his own thread
+[33m9b7c262[m HEAD@{39}: commit: updated gitignore, deleted visual studio filed
+[33m1dfedfe[m HEAD@{40}: commit: updated gitignore
+[33m9b3c173[m HEAD@{41}: commit: little improve to Vision class
+[33m5108727[m HEAD@{42}: pull: Merge made by the 'ort' strategy.
+[33md5b8e1a[m HEAD@{43}: commit: infinite threads and input imitation fix, added .gitignore
+[33m9d90421[m HEAD@{44}: reset: moving to HEAD~
+[33mc4cf125[m HEAD@{45}: reset: moving to HEAD~2
+[33mcac17fb[m HEAD@{46}: pull: Merge made by the 'ort' strategy.
+[33m392baa3[m HEAD@{47}: commit: fixed infinite threads creation and input imitation
+[33mc4cf125[m HEAD@{48}: reset: moving to HEAD~2
+[33md74a0b0[m HEAD@{49}: commit: removed .vs directory, added .gitignore
+[33m01907d2[m HEAD@{50}: commit (merge): Merge
+[33mc4cf125[m HEAD@{51}: reset: moving to HEAD
+[33mc4cf125[m HEAD@{52}: commit: fixed infinite threads creation and input imitation
+[33m9d90421[m HEAD@{53}: Branch: renamed refs/heads/main to refs/heads/main
+[33m9d90421[m HEAD@{55}: commit (initial): first commit

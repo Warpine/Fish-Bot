@@ -233,8 +233,12 @@ void Vision::CaptureFih()
 		if (config.restCycles != NULL) {
 			restCounter++;
 			if (restCounter >= config.restCycles) {
+				statusMessage = "resting";
+				timerActive = false;
 				std::this_thread::sleep_for(std::chrono::minutes(2));
 				restCounter = 0;
+				clockStart = std::chrono::high_resolution_clock::now();
+				timerActive = true;
 			}
 			
 		}
