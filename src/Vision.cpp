@@ -105,6 +105,9 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 	if (config.workTime != NULL) {
 		startWork = std::chrono::high_resolution_clock::now();
 	}
+	if (config.restCycles != NULL) {
+
+	}
 	
 	
 	while (fihingState.load())
@@ -194,7 +197,8 @@ void Vision::CaptureFih()
 		if (img.empty()) {
 			emptyCounter++;
 			
-			if (emptyCounter >= 7) { //можно после этого ждать какое-то время и проверять на ошибку с новым изображением
+			//magic number
+			if (emptyCounter >= 7) { 
 				
 				
 			    status = FINISHED;
@@ -223,10 +227,21 @@ void Vision::CaptureFih()
 		ZeroMemory(&inputCatch, sizeof(inputCatch));
 		
 		
-		if (checkRestart()) { break; } 
-		if (config.cycles != NULL) {
+		if (checkRestart()) { break; }
+
+		//if condition for rest
+		if (config.restCycles != NULL) {
+			restCounter++;
+			if (restCounter >= config.restCycles) {
+				std::this_thread::sleep_for(std::chrono::minutes(2));
+				restCounter = 0;
+			}
+			
+		}
+		//if condition for cleanup
+		if (config.cleanCycles != NULL) {
 			cleanCounter++;
-			if (cleanCounter == config.cycles) {
+			if (cleanCounter == config.cleanCycles) {
 				statusMessage = skCrypt("cleaning");
 
 				std::this_thread::sleep_for(std::chrono::milliseconds(2000));
@@ -242,6 +257,7 @@ void Vision::CaptureFih()
 				
 			}
 		}
+		//if condition for buffs
 		if (buffsActive) {
 			
 			if (config.useBait) {
@@ -267,7 +283,7 @@ void Vision::CaptureFih()
 			
 			
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+		std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 		
 		
 		break;
@@ -333,6 +349,7 @@ void Vision::stopCapture()
 	itThatRemember = POINT();
 	cleanCounter = 0;
 	baitCounter = 0;
+	restCounter = 0;
 	cropRect = cv::Rect();
 	scaleRect = cv::Rect();
 
@@ -1028,7 +1045,6 @@ cv::Mat Vision::getTemplateInTemplate(matchingEnum backTemplate, matchingEnum fr
 	
 	getWindowMat();
 	
-    //может использоваться только для шкалы ловли, чтобы использовать по-нормальному надо в конструктор добавить матрицу
 	cv::Mat backImage = matchingMethod(backTemplate, halved, &backRect);
 	if (backImage.empty()) {
 		return cv::Mat();

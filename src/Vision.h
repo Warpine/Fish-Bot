@@ -121,6 +121,8 @@ private:
 	int baitCounter = 0;
 	bool timerActive = true;
 
+	int restCounter = 0;
+
 	//add new objects here
 	const std::vector<std::vector<int>> objHSV = {
 		//hmin, hmax, smin, smax, vmin, vmax
@@ -152,7 +154,7 @@ private:
 		151, //pie
 		249, //salad
 		151, //bait
-		247, //logs
+		230, //logs
 		200, //slot
 		30, //main logo
 		221, //login button
@@ -163,7 +165,7 @@ private:
 		240, //ok button
 		247, //stone
 		131, //close button(x)
-		171
+		171  //float in scale
 	};
     
 	std::vector<cv::Mat> matchingTempl = {
@@ -251,8 +253,8 @@ public:
 	int duration;
 	//time start for error check
 	std::chrono::steady_clock::time_point clockStart;
+	//time start for work timer
 	std::chrono::steady_clock::time_point startWork;
-	std::atomic<time_t> startTime;
 	
 	void startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit);
 	Vision(Config& config);

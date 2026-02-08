@@ -28,12 +28,15 @@ public:
 	bool usePie;
 	bool useBait;
 	bool windowedCapture;
-	//bool gdiMustChange = false;
 	bool lowResolution;
 	bool viewOpen;
 
+	//menu bools
+	bool checkboxes = true;
+
+	int restCycles;
 	int workTime;
-	int cycles;
+	int cleanCycles;
 	int throwTimeMs;
 	int areaRadius;
 	int fihKey;
@@ -51,8 +54,10 @@ public:
 
 		ini.SetLongValue(skCrypt("Values"), skCrypt("areaRadius"), areaRadius);
 		ini.SetLongValue(skCrypt("Values"), skCrypt("throwTimeMs"), throwTimeMs);
-		ini.SetLongValue(skCrypt("Values"), skCrypt("cycles"), cycles);
+		ini.SetLongValue(skCrypt("Values"), skCrypt("cleanCycles"), cleanCycles);
 		ini.SetLongValue(skCrypt("Values"), skCrypt("workTime"), workTime);
+		ini.SetLongValue("Values", "restCycles", restCycles);
+		
 
 		ini.SetBoolValue("Bools", "usePie", usePie);
 		ini.SetBoolValue("Bools", "useSalad", useSalad);
@@ -81,8 +86,9 @@ public:
 
 		throwTimeMs =     ini.GetLongValue("Values", "throwTimeMs");
 		areaRadius =      ini.GetLongValue("Values", "areaRadius");
-		cycles =          ini.GetLongValue("Values", "cycles");
+		cleanCycles =          ini.GetLongValue("Values", "cleanCycles");
 		workTime =        ini.GetLongValue("Values", "workTime");
+		restCycles =      ini.GetLongValue("Values", "restCycles");
 
 		usePie =          ini.GetBoolValue("Bools", "usePie");
 		useSalad =        ini.GetBoolValue("Bools", "useSalad");
@@ -119,77 +125,99 @@ public:
 
 	void settingsWindow(bool& settingsOpen) {
 		
-		ImGui::Begin("Settings", &settingsOpen, flazhoks);
+		ImGui::Begin("Settings", &settingsOpen, flazhoks | ImGuiWindowFlags_MenuBar);
 		
-		
+		ImGui::BeginMenuBar();
+		if (ImGui::MenuItem("Checkboxes", (const char*)0, checkboxes)) {
+			checkboxes = true;
+		}
+		if (ImGui::MenuItem("Sliders", (const char*)0, !checkboxes)) {
+			checkboxes = false;
+		}
+
+		ImGui::EndMenuBar();
+
 		//slider areaRadius
-		ImGui::TextDisabled("(?)");
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Radius of capture area in pixels\nDefault value = 200");
-		} 
-		ImGui::SameLine();
-		ImGui::SliderInt("Area Size", &areaRadius, 100, 250);
-		//slider throwTimeMs
-		ImGui::TextDisabled("(?)");
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Determines how far the fishing rod will be thrown in milliseconds\nDefault value = 350");
-		}
-		ImGui::SameLine();
-		ImGui::SliderInt("Throw time", &throwTimeMs, 250, 1000);
-		ImGui::TextDisabled("(?)");
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Time in hours until bot stops\n if set to zero = works until manually stopped");
-		}
-		ImGui::SameLine();
-		ImGui::SliderInt("Work Time", &workTime, 0, 24);
-		//slider throwCount
-		ImGui::TextDisabled("(?)");
-		if (ImGui::IsItemHovered()) {
-			std::string throwTooltip = "Cleanup inventory from logs and stones each " + std::to_string(cycles) + " fishing cycles \nif set to zero = cleanup disabled\nDefault value = 30";
-			ImGui::SetTooltip(throwTooltip.c_str());
-		}
-		ImGui::SameLine();
-		ImGui::SliderInt("Cleanup", &cycles, 0, 50);
+		if (!checkboxes) {
 
-		
-		if (ImGui::Checkbox("Use Pie", &usePie)) {
-			useSalad = false;
-		}
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Uses any tier pie");
-		}
-		ImGui::SameLine();
-		if (ImGui::Checkbox("Use Salad", &useSalad)) {
-			usePie = false;
-		}
-		ImGui::SameLine();
-		ImGui::Checkbox("Use Bait", &useBait);
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Uses any tier bait");
-		}
+			ImGui::TextDisabled("(?)");
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Radius of capture area in pixels\nDefault value = 200");
+			}
+			ImGui::SameLine();
+			ImGui::SliderInt("Area Size", &areaRadius, 100, 250);
+			//slider throwTimeMs
+			ImGui::TextDisabled("(?)");
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Determines how far the fishing rod will be thrown in milliseconds\nDefault value = 350");
+			}
+			ImGui::SameLine();
+			ImGui::SliderInt("Throw time", &throwTimeMs, 250, 1000);
+			
+			//slider throwCount
+			ImGui::TextDisabled("(?)");
+			if (ImGui::IsItemHovered()) {
+				std::string throwTooltip = "Cleanup inventory from logs and stones each " + std::to_string(cleanCycles) + " fishing cycles \nif set to zero = cleanup disabled\nDefault value = 30";
+				ImGui::SetTooltip(throwTooltip.c_str());
+			}
+			ImGui::SameLine();
+			ImGui::SliderInt("Cleanup", &cleanCycles, 0, 50);
 
-		//ImGui::Checkbox("Windowed", &windowedCapture);
-		ImGui::Text("Capture mode: ");
-		if (ImGui::RadioButton("Borderless", !windowedCapture)) {
-			windowedCapture = false;
-			
+			ImGui::TextDisabled("(?)");
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Rest for 2 minutes each # cycles\n if set to zero = disabled");
+			}
+			ImGui::SameLine();
+			ImGui::SliderInt("Rest Cycles", &restCycles, 0, 20);
+
+			ImGui::TextDisabled("(?)");
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Time in hours until bot stops\n if set to zero = works until manually stopped");
+			}
+			ImGui::SameLine();
+			ImGui::SliderInt("Work Time", &workTime, 0, 24);
+
 		}
-		ImGui::SameLine();
-		if (ImGui::RadioButton("Windowed", windowedCapture)) {
-			windowedCapture = true;
-			
+		else {
+
+			if (ImGui::Checkbox("Use Pie", &usePie)) {
+				useSalad = false;
+			}
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Uses any tier pie");
+			}
+			ImGui::SameLine();
+			if (ImGui::Checkbox("Use Salad", &useSalad)) {
+				usePie = false;
+			}
+			ImGui::SameLine();
+			ImGui::Checkbox("Use Bait", &useBait);
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Uses any tier bait");
+			}
+
+			//ImGui::Checkbox("Windowed", &windowedCapture);
+			ImGui::Text("Capture mode: ");
+			if (ImGui::RadioButton("Borderless", !windowedCapture)) {
+				windowedCapture = false;
+
+			}
+			ImGui::SameLine();
+			if (ImGui::RadioButton("Windowed", windowedCapture)) {
+				windowedCapture = true;
+
+			}
+			ImGui::Text("Resolution: ");
+			if (ImGui::RadioButton("1920x1080", !lowResolution)) {
+				lowResolution = false;
+
+			}
+			ImGui::SameLine();
+			if (ImGui::RadioButton("1024x768", lowResolution)) {
+				lowResolution = true;
+
+			}
 		}
-		ImGui::Text("Resolution: ");
-		if (ImGui::RadioButton("1920x1080", !lowResolution)) {
-			lowResolution = false;
-			
-		}
-		ImGui::SameLine();
-		if (ImGui::RadioButton("1024x768", lowResolution)) {
-			lowResolution = true;
-			
-		}
-		
 		
 
 		if (ImGui::Button("Save Settings")) { saveConfig(); }
@@ -207,8 +235,9 @@ private:
 		foodKey = '2';
 		areaRadius = 200;
 		throwTimeMs = 350;
-		cycles = 30;
+		cleanCycles = 30;
 		workTime = 0;
+		restCycles = 0;
 		useSalad = false;
 		usePie = false;
 		useBait = false;
